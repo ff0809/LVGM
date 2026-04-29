@@ -132,37 +132,47 @@ export default function Home() {
     }
   };
 
-  // Mock 生成函数
+  // 模拟 Stage 1 编码解码：对原始 SVG 进行微小变换
+  const transformSvg = (svgText: string): string => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgText, 'image/svg+xml');
+    const svg = doc.querySelector('svg');
+    if (!svg) return svgText;
+
+    // 对路径数据添加微小扰动，模拟量化误差
+    const paths = svg.querySelectorAll('path');
+    paths.forEach((path) => {
+      const d = path.getAttribute('d');
+      if (d) {
+        const transformedD = d.replace(/([0-9]+\.?[0-9]*)/g, (match) => {
+          const num = parseFloat(match);
+          const perturbation = num * (Math.random() * 0.03 - 0.015);
+          return (num + perturbation).toFixed(2);
+        });
+        path.setAttribute('d', transformedD);
+      }
+    });
+
+    svg.setAttribute('data-reconstructed', 'true');
+    return new XMLSerializer().serializeToString(svg);
+  };
+
+  // Mock 生成函数 - 对原始 SVG 进行变换重建
   const handleGenerate = async () => {
-    if (!selectedExample) return;
+    if (!selectedExample || !originalSvg) return;
 
     setIsGenerating(true);
 
-    // 模拟 500-1200ms 的延迟
-    const delay = Math.random() * 700 + 500;
+    // 模拟 Stage 1 处理时间
+    const delay = 1500 + Math.random() * 500;
     await new Promise((resolve) => setTimeout(resolve, delay));
 
-    // 从同一分类中随机选择另一个 SVG 作为"生成结果"
-    const sameCategory = examples.filter(
-      (e) => e.category === selectedExample.category && e.id !== selectedExample.id
-    );
-
-    if (sameCategory.length === 0) {
-      setIsGenerating(false);
-      return;
-    }
-
-    const randomExample =
-      sameCategory[Math.floor(Math.random() * sameCategory.length)];
-
     try {
-      const res = await fetch(randomExample.svgPath);
-      if (!res.ok) throw new Error('生成失败');
-      const svgText = await res.text();
-      setGeneratedSvg(svgText);
+      const reconstructedSvg = transformSvg(originalSvg);
+      setGeneratedSvg(reconstructedSvg);
 
-      const fileName = randomExample.svgPath.split('/').pop() || randomExample.id;
-      setGeneratedInfo(parseSvgInfo(svgText, fileName));
+      const fileName = selectedExample.svgPath.split('/').pop() || selectedExample.id;
+      setGeneratedInfo(parseSvgInfo(reconstructedSvg, `${fileName} (重建)`));
     } catch (err) {
       console.error('Mock 生成失败:', err);
     } finally {
