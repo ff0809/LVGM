@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ControlPanel } from '@/components/ControlPanel';
 import { SvgPreview } from '@/components/SvgPreview';
 import { InfoCard } from '@/components/InfoCard';
+import { PipelineVisualizer } from '@/components/PipelineVisualizer';
 import { SvgExample, Manifest, SvgInfo } from '@/types';
 
 // 解析 SVG 文本，提取信息
@@ -234,6 +235,12 @@ Response:
             <InfoCard info={originalInfo} title="原始 SVG 信息" />
             <InfoCard info={generatedInfo} title="生成 SVG 信息" />
           </div>
+
+          {/* Stage 1 流水线可视化 */}
+          <PipelineVisualizer
+            isProcessing={isGenerating}
+            svgContent={originalSvg}
+          />
         </section>
       </main>
 

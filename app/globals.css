@@ -360,6 +360,268 @@ body {
   color: #888;
 }
 
+/* Pipeline Visualizer */
+.pipeline-visualizer {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.pipeline-visualizer h3 {
+  margin: 0 0 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Pipeline Steps */
+.pipeline-steps {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 0 8px;
+}
+
+.pipeline-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.pipeline-step .step-number {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.pipeline-step.pending .step-number {
+  background: #f0f0f0;
+  color: #999;
+}
+
+.pipeline-step.active .step-number {
+  background: #0066cc;
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.2);
+}
+
+.pipeline-step.complete .step-number {
+  background: #22c55e;
+  color: #fff;
+}
+
+.pipeline-step .step-label {
+  font-size: 10px;
+  color: #666;
+  text-align: center;
+}
+
+.pipeline-step.active .step-label {
+  color: #0066cc;
+  font-weight: 500;
+}
+
+/* Current Step Info */
+.current-step-info {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.current-step-info .step-indicator {
+  margin-right: 8px;
+  color: #0066cc;
+}
+
+/* Data Visualization */
+.data-visualization {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.data-block {
+  background: #fafafa;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  padding: 14px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.data-block h4 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+}
+
+/* Stroke Params Matrix */
+.matrix-preview {
+  overflow-x: auto;
+}
+
+.matrix-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+}
+
+.matrix-preview th,
+.matrix-preview td {
+  padding: 4px 8px;
+  text-align: right;
+  border-bottom: 1px solid #eee;
+}
+
+.matrix-preview th {
+  font-weight: 600;
+  color: #888;
+  font-size: 10px;
+}
+
+.matrix-preview .row-label {
+  color: #888;
+  text-align: left;
+}
+
+.matrix-preview .ellipsis-row td {
+  text-align: center;
+  color: #999;
+  font-style: italic;
+}
+
+/* Feature Heatmap */
+.feature-heatmap {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.feature-plane {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.feature-plane .plane-label {
+  font-size: 10px;
+  color: #888;
+  font-weight: 500;
+}
+
+.heatmap-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.heatmap-row {
+  display: flex;
+  gap: 1px;
+}
+
+.heatmap-cell {
+  width: 10px;
+  height: 10px;
+  border-radius: 1px;
+}
+
+.more-planes {
+  font-size: 11px;
+  color: #888;
+  display: flex;
+  align-items: center;
+}
+
+/* Encoder Activations */
+.activation-bars {
+  display: flex;
+  gap: 8px;
+  height: 60px;
+  align-items: flex-end;
+  padding: 8px 0;
+}
+
+.activation-bar-container {
+  flex: 1;
+  height: 100%;
+  background: #f0f0f0;
+  border-radius: 2px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.activation-bar {
+  width: 100%;
+  background: linear-gradient(to top, #0066cc, #3b82f6);
+  border-radius: 2px;
+  transition: height 0.3s;
+}
+
+/* Indices Matrix */
+.indices-matrix .indices-desc {
+  margin: 0 0 10px;
+  font-size: 11px;
+  color: #888;
+}
+
+.indices-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+}
+
+.indices-row {
+  display: flex;
+  gap: 2px;
+}
+
+.index-cell {
+  width: 48px;
+  padding: 4px;
+  background: #e0e7ff;
+  border-radius: 3px;
+  font-size: 10px;
+  text-align: center;
+  color: #3730a3;
+}
+
+.indices-note {
+  margin: 12px 0 0;
+  padding: 10px;
+  background: #fef3c7;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #92400e;
+}
+
 /* Responsive */
 @media (max-width: 900px) {
   .main-content {
