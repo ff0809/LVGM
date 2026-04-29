@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface PipelineVisualizerProps {
   isProcessing: boolean;
@@ -70,65 +70,67 @@ export function PipelineVisualizer({ isProcessing, svgContent }: PipelineVisuali
   const [decodedParams, setDecodedParams] = useState<number[][] | null>(null);
   const [isRendered, setIsRendered] = useState(false);
 
-  // 模拟处理流程
+  // 使用 ref 追踪是否已启动流水线
+  const pipelineStartedRef = React.useRef(false);
+
+  // 模拟处理流程 - 只在 isProcessing 从 false 变为 true 时启动
   useEffect(() => {
-    if (!isProcessing) {
-      // 不处理时不做任何事，保持当前状态
-      return;
+    if (isProcessing && !pipelineStartedRef.current) {
+      // 标记流水线已启动
+      pipelineStartedRef.current = true;
+      
+      // 开始新处理时重置为 parsing
+      setCurrentStep('parsing');
+      
+      const steps: { step: PipelineStep; delay: number; action?: () => void }[] = [
+        { 
+          step: 'parsing', 
+          delay: 250,
+          action: () => setStrokeParams(generateMockStrokeParams())
+        },
+        { 
+          step: 'reshaping', 
+          delay: 200,
+          action: () => setFeatureBlock(generateMock6x8x8())
+        },
+        { 
+          step: 'encoding', 
+          delay: 300,
+          action: () => setEncoderActivations(Array.from({ length: 8 }, () => Math.random()))
+        },
+        { 
+          step: 'quantizing', 
+          delay: 250,
+          action: () => setIndices(generateMockIndices())
+        },
+        { 
+          step: 'decoding', 
+          delay: 250,
+          action: () => setDecodedParams(generateMockStrokeParams())
+        },
+        { 
+          step: 'rendering', 
+          delay: 200,
+          action: () => setIsRendered(true)
+        },
+        { step: 'complete', delay: 50 },
+      ];
+
+      let totalDelay = 0;
+
+      steps.forEach(({ step, delay, action }) => {
+        setTimeout(() => {
+          setCurrentStep(step);
+          action?.();
+        }, totalDelay);
+        totalDelay += delay;
+      });
     }
-
-    // 开始新处理时重置为 parsing
-    setCurrentStep('parsing');
     
-    const steps: { step: PipelineStep; delay: number; action?: () => void }[] = [
-      { 
-        step: 'parsing', 
-        delay: 400,
-        action: () => setStrokeParams(generateMockStrokeParams())
-      },
-      { 
-        step: 'reshaping', 
-        delay: 300,
-        action: () => setFeatureBlock(generateMock6x8x8())
-      },
-      { 
-        step: 'encoding', 
-        delay: 500,
-        action: () => setEncoderActivations(Array.from({ length: 8 }, () => Math.random()))
-      },
-      { 
-        step: 'quantizing', 
-        delay: 400,
-        action: () => setIndices(generateMockIndices())
-      },
-      { 
-        step: 'decoding', 
-        delay: 400,
-        action: () => setDecodedParams(generateMockStrokeParams())
-      },
-      { 
-        step: 'rendering', 
-        delay: 300,
-        action: () => setIsRendered(true)
-      },
-      { step: 'complete', delay: 100 },
-    ];
-
-    let totalDelay = 0;
-    const timeouts: NodeJS.Timeout[] = [];
-
-    steps.forEach(({ step, delay, action }) => {
-      const timeout = setTimeout(() => {
-        setCurrentStep(step);
-        action?.();
-      }, totalDelay);
-      timeouts.push(timeout);
-      totalDelay += delay;
-    });
-
-    return () => {
-      timeouts.forEach(clearTimeout);
-    };
+    // 当 isProcessing 变回 false 时，重置 ref 以便下次可以再次启动
+    if (!isProcessing) {
+      pipelineStartedRef.current = false;
+    }
   }, [isProcessing]);
 
   // 当开始新的处理时重置状态
