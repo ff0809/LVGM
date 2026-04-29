@@ -683,6 +683,45 @@ body {
   color: #92400e;
 }
 
+/* Decoded Params */
+.decoded-params {
+  border-left: 3px solid #22c55e;
+}
+
+.decode-note {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: #16a34a;
+  font-style: italic;
+}
+
+/* Render Complete */
+.render-complete {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 1px solid #86efac;
+}
+
+.render-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #166534;
+}
+
+.check-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #22c55e;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: bold;
+}
+
 /* Responsive */
 @media (max-width: 900px) {
   .main-content {

@@ -67,6 +67,8 @@ export function PipelineVisualizer({ isProcessing, svgContent }: PipelineVisuali
   const [featureBlock, setFeatureBlock] = useState<number[][][] | null>(null);
   const [indices, setIndices] = useState<number[][] | null>(null);
   const [encoderActivations, setEncoderActivations] = useState<number[] | null>(null);
+  const [decodedParams, setDecodedParams] = useState<number[][] | null>(null);
+  const [isRendered, setIsRendered] = useState(false);
 
   // 模拟处理流程
   useEffect(() => {
@@ -99,9 +101,17 @@ export function PipelineVisualizer({ isProcessing, svgContent }: PipelineVisuali
         delay: 400,
         action: () => setIndices(generateMockIndices())
       },
-      { step: 'decoding', delay: 300 },
-      { step: 'rendering', delay: 200 },
-      { step: 'complete', delay: 0 },
+      { 
+        step: 'decoding', 
+        delay: 400,
+        action: () => setDecodedParams(generateMockStrokeParams())
+      },
+      { 
+        step: 'rendering', 
+        delay: 300,
+        action: () => setIsRendered(true)
+      },
+      { step: 'complete', delay: 100 },
     ];
 
     let totalDelay = 0;
@@ -129,6 +139,8 @@ export function PipelineVisualizer({ isProcessing, svgContent }: PipelineVisuali
       setFeatureBlock(null);
       setIndices(null);
       setEncoderActivations(null);
+      setDecodedParams(null);
+      setIsRendered(false);
     }
     // 处理完成后保持数据显示，不清除
   }, [isProcessing]);
@@ -277,6 +289,50 @@ export function PipelineVisualizer({ isProcessing, svgContent }: PipelineVisuali
             <p className="indices-note">
               这 64 个索引就是汉字的「基因序列」，将作为 Stage 2 的输入
             </p>
+          </div>
+        )}
+
+        {/* 解码后的参数 */}
+        {decodedParams && (
+          <div className="data-block decoded-params">
+            <h4>解码重建参数 (64×3)</h4>
+            <div className="matrix-preview">
+              <table>
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>x&apos;</th>
+                    <th>y&apos;</th>
+                    <th>w&apos;</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {decodedParams.slice(0, 5).map((row, i) => (
+                    <tr key={i}>
+                      <td className="row-label">[{i}]</td>
+                      {row.map((val, j) => (
+                        <td key={j}>{val.toFixed(1)}</td>
+                      ))}
+                    </tr>
+                  ))}
+                  <tr className="ellipsis-row">
+                    <td colSpan={4}>... (共 64 行)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="decode-note">与原始参数对比，存在微小量化误差</p>
+          </div>
+        )}
+
+        {/* 渲染完成状态 */}
+        {isRendered && (
+          <div className="data-block render-complete">
+            <h4>渲染完成</h4>
+            <div className="render-status">
+              <span className="check-icon">&#10003;</span>
+              <span>SVG 已重建完成，请查看右侧「生成结果」</span>
+            </div>
           </div>
         )}
       </div>
