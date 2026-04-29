@@ -71,9 +71,11 @@ export function PipelineVisualizer({ isProcessing, svgContent }: PipelineVisuali
   // 模拟处理流程
   useEffect(() => {
     if (!isProcessing) {
+      // 不处理时不做任何事，保持当前状态
       return;
     }
 
+    // 开始新处理时重置为 parsing
     setCurrentStep('parsing');
     
     const steps: { step: PipelineStep; delay: number; action?: () => void }[] = [
@@ -119,18 +121,17 @@ export function PipelineVisualizer({ isProcessing, svgContent }: PipelineVisuali
     };
   }, [isProcessing]);
 
-  // 重置状态
+  // 当开始新的处理时重置状态
   useEffect(() => {
-    if (!isProcessing && currentStep === 'complete') {
-      // 保持完成状态
-    } else if (!isProcessing) {
-      setCurrentStep('idle');
+    if (isProcessing) {
+      // 开始新处理时重置所有数据
       setStrokeParams(null);
       setFeatureBlock(null);
       setIndices(null);
       setEncoderActivations(null);
     }
-  }, [isProcessing, currentStep]);
+    // 处理完成后保持数据显示，不清除
+  }, [isProcessing]);
 
   const stepLabels: Record<PipelineStep, string> = {
     idle: '等待输入',
