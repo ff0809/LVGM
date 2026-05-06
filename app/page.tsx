@@ -5,6 +5,7 @@ import { ControlPanel } from '@/components/ControlPanel';
 import { SvgPreview } from '@/components/SvgPreview';
 import { InfoCard } from '@/components/InfoCard';
 import { PipelineVisualizer } from '@/components/PipelineVisualizer';
+import { ProjectIntro } from '@/components/ProjectIntro';
 import { SvgExample, Manifest, SvgInfo } from '@/lib/types';
 
 function parseSvgInfo(svgText: string, fileName: string): SvgInfo {
@@ -138,6 +139,7 @@ export default function Home() {
 
       <main className="main-content">
         <aside className="sidebar">
+          <ProjectIntro />
           <ControlPanel
             categories={categories}
             selectedCategory={selectedCategory}
