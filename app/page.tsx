@@ -1,22 +1,20 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
+import { HeroSection } from '@/components/HeroSection';
+import { DatasetSection } from '@/components/DatasetSection';
+import { BackgroundSection, MethodSection, InnovationSection, ResultsSection } from '@/components/PaperSections';
 import { ControlPanel } from '@/components/ControlPanel';
 import { SvgPreview } from '@/components/SvgPreview';
 import { InfoCard } from '@/components/InfoCard';
 import { PipelineVisualizer } from '@/components/PipelineVisualizer';
-import { ProjectIntro } from '@/components/ProjectIntro';
 import { SvgExample, Manifest, SvgInfo } from '@/lib/types';
 
 function parseSvgInfo(svgText: string, fileName: string): SvgInfo {
   const parser = new DOMParser();
   const doc = parser.parseFromString(svgText, 'image/svg+xml');
   const svg = doc.querySelector('svg');
-
-  if (!svg) {
-    return { fileName, viewBox: null, width: null, height: null, pathCount: 0, elementCount: 0, hasStyle: false };
-  }
-
+  if (!svg) return { fileName, viewBox: null, width: null, height: null, pathCount: 0, elementCount: 0, hasStyle: false };
   return {
     fileName,
     viewBox: svg.getAttribute('viewBox'),
@@ -26,10 +24,6 @@ function parseSvgInfo(svgText: string, fileName: string): SvgInfo {
     elementCount: svg.querySelectorAll('*').length,
     hasStyle: svg.querySelector('style') !== null || svgText.includes('style='),
   };
-}
-
-function isValidSvgPath(path: string): boolean {
-  return path.startsWith('/examples/') && path.endsWith('.svg');
 }
 
 export default function Home() {
@@ -47,7 +41,7 @@ export default function Home() {
 
   useEffect(() => {
     fetch('/examples/manifest.json')
-      .then((res) => res.json())
+      .then((r) => r.json())
       .then((data: Manifest) => {
         setExamples(data.examples);
         const first = data.examples.find((e) => e.category === 'my_svgs');
@@ -57,10 +51,6 @@ export default function Home() {
   }, []);
 
   const loadSvg = useCallback(async (example: SvgExample) => {
-    if (!isValidSvgPath(example.svgPath)) {
-      setLoadError('无效的 SVG 路径');
-      return;
-    }
     setIsLoadingOriginal(true);
     setLoadError(null);
     try {
@@ -113,7 +103,7 @@ export default function Home() {
   const handleGenerate = async () => {
     if (!selectedExample || !originalSvg) return;
     setIsGenerating(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 500));
+    await new Promise((r) => setTimeout(r, 1500 + Math.random() * 500));
     try {
       const reconstructedSvg = transformSvg(originalSvg);
       setGeneratedSvg(reconstructedSvg);
@@ -130,72 +120,78 @@ export default function Home() {
 
   return (
     <div className="app">
-      <header className="header">
-        <h1>LVGM SVG Demo</h1>
-        <p className="subtitle">
-          当前为 <strong>Mock 演示</strong>，后续可接推理服务
-        </p>
-      </header>
+      {/* Top: sticky nav + hero */}
+      <HeroSection />
 
-      <main className="main-content">
-        <aside className="sidebar">
-          <ProjectIntro />
-          <ControlPanel
-            categories={categories}
-            selectedCategory={selectedCategory}
-            onCategoryChange={handleCategoryChange}
-            examples={examples}
-            selectedExample={selectedExample}
-            onExampleChange={setSelectedExample}
-            inputText={inputText}
-            onInputTextChange={setInputText}
-            onGenerate={handleGenerate}
-            isGenerating={isGenerating}
-          />
-          <div className="api-note">
-            <h4>API 协议草案</h4>
-            <pre>{`POST /api/generate
+      {/* Paper content sections */}
+      <div className="paper-content">
+        <BackgroundSection />
+        <DatasetSection />
+        <MethodSection />
+        <InnovationSection />
+        <ResultsSection />
+
+        {/* Demo section */}
+        <section id="demo" className="content-section demo-section">
+          <div className="section-label">Demo 演示</div>
+          <h2 className="section-title">Stage 1: Vectorization 交互演示</h2>
+          <p className="section-desc">
+            选择一个示例字形，点击「生成」查看 VQ-VAE 编码 / 解码的完整流水线过程（当前为 Mock 演示，后续接入推理服务）。
+          </p>
+
+          <div className="demo-layout">
+            <aside className="demo-sidebar">
+              <ControlPanel
+                categories={categories}
+                selectedCategory={selectedCategory}
+                onCategoryChange={handleCategoryChange}
+                examples={examples}
+                selectedExample={selectedExample}
+                onExampleChange={setSelectedExample}
+                inputText={inputText}
+                onInputTextChange={setInputText}
+                onGenerate={handleGenerate}
+                isGenerating={isGenerating}
+              />
+              <div className="api-note">
+                <h4>API 协议草案</h4>
+                <pre>{`POST /api/generate
 {
   "text": "一",
   "baseExampleId": "heng",
   "style": "kaishu"
-}
-
-Response:
-{
-  "svgContent": "<svg>...</svg>",
-  "processingTime": 1234,
-  "generationId": "uuid"
 }`}</pre>
-          </div>
-        </aside>
+              </div>
+            </aside>
 
-        <section className="preview-area">
-          <div className="preview-row">
-            <SvgPreview
-              title="原始 SVG (Original)"
-              svgContent={originalSvg}
-              isLoading={isLoadingOriginal}
-              error={loadError}
-              onRetry={() => selectedExample && loadSvg(selectedExample)}
-            />
-            <SvgPreview
-              title="生成结果 (Generated)"
-              svgContent={generatedSvg}
-              isLoading={isGenerating}
-              emptyText="点击「生成」按钮查看结果"
-            />
+            <div className="demo-main">
+              <div className="preview-row">
+                <SvgPreview
+                  title="原始 SVG (Original)"
+                  svgContent={originalSvg}
+                  isLoading={isLoadingOriginal}
+                  error={loadError}
+                  onRetry={() => selectedExample && loadSvg(selectedExample)}
+                />
+                <SvgPreview
+                  title="生成结果 (Generated)"
+                  svgContent={generatedSvg}
+                  isLoading={isGenerating}
+                  emptyText="点击「生成」按钮查看结果"
+                />
+              </div>
+              <div className="info-row">
+                <InfoCard info={originalInfo} title="原始 SVG 信息" />
+                <InfoCard info={generatedInfo} title="生成 SVG 信息" />
+              </div>
+              <PipelineVisualizer isProcessing={isGenerating} svgContent={originalSvg} />
+            </div>
           </div>
-          <div className="info-row">
-            <InfoCard info={originalInfo} title="原始 SVG 信息" />
-            <InfoCard info={generatedInfo} title="生成 SVG 信息" />
-          </div>
-          <PipelineVisualizer isProcessing={isGenerating} svgContent={originalSvg} />
         </section>
-      </main>
+      </div>
 
       <footer className="footer">
-        <p>LVGM - Large Vector Graphics Model | 矢量图形语言模型</p>
+        <p>LVGM — Large Vector Graphics Model &nbsp;·&nbsp; 面向多风格的视觉引导式矢量字形大模型</p>
       </footer>
     </div>
   );
