@@ -1,4 +1,18 @@
-# Logs
+# dependencies
+node_modules
+frontend-demo/
+src/
+
+# Next.js
+.next/
+out/
+
+# build outputs
+dist
+dist-ssr
+*.local
+
+# logs
 logs
 *.log
 npm-debug.log*
@@ -7,12 +21,10 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# env files
+.env*.local
 
-# Editor directories and files
+# editor
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -22,3 +34,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Vite legacy files (do not restore)
+vite.config.*
+index.html
+tsconfig.app.json
+tsconfig.node.json
+eslint.config.js
+types.ts
