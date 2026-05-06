@@ -12,17 +12,12 @@ interface SvgPreviewProps {
 }
 
 export function SvgPreview({
-  title,
-  subtitle,
-  svgContent,
-  isLoading = false,
-  error = null,
-  onRetry,
-  emptyText = '暂无内容',
-  variant = 'default',
+  title, subtitle, svgContent,
+  isLoading = false, error = null,
+  onRetry, emptyText = '暂无内容', variant = 'default',
 }: SvgPreviewProps) {
   return (
-    <div className={`svg-preview ${variant === 'generated' ? 'generated' : ''}`}>
+    <div className={`svg-preview${variant === 'generated' ? ' generated' : ''}`}>
       <div className="preview-header">
         <h3>{title}</h3>
         {subtitle && <span className="preview-subtitle">{subtitle}</span>}
@@ -37,17 +32,10 @@ export function SvgPreview({
           <div className="error-state">
             <span className="error-icon">!</span>
             <p>{error}</p>
-            {onRetry && (
-              <button className="retry-btn" onClick={onRetry}>
-                重试
-              </button>
-            )}
+            {onRetry && <button className="retry-btn" onClick={onRetry}>重试</button>}
           </div>
         ) : svgContent ? (
-          <div
-            className="svg-render"
-            dangerouslySetInnerHTML={{ __html: svgContent }}
-          />
+          <div className="svg-render" dangerouslySetInnerHTML={{ __html: svgContent }} />
         ) : (
           <div className="empty-state">{emptyText}</div>
         )}

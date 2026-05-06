@@ -32,9 +32,7 @@ export function InfoCard({ info, title = 'SVG 信息' }: InfoCardProps) {
         <div className="info-item">
           <span className="info-label">尺寸</span>
           <span className="info-value">
-            {info.width && info.height
-              ? `${info.width} x ${info.height}`
-              : '未指定'}
+            {info.width && info.height ? `${info.width} x ${info.height}` : '未指定'}
           </span>
         </div>
         <div className="info-item">

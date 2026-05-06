@@ -7,46 +7,26 @@ import { InfoCard } from '@/components/InfoCard';
 import { PipelineVisualizer } from '@/components/PipelineVisualizer';
 import { SvgExample, Manifest, SvgInfo } from '@/lib/types';
 
-// 解析 SVG 文本，提取信息
 function parseSvgInfo(svgText: string, fileName: string): SvgInfo {
   const parser = new DOMParser();
   const doc = parser.parseFromString(svgText, 'image/svg+xml');
   const svg = doc.querySelector('svg');
 
   if (!svg) {
-    return {
-      fileName,
-      viewBox: null,
-      width: null,
-      height: null,
-      pathCount: 0,
-      elementCount: 0,
-      hasStyle: false,
-    };
+    return { fileName, viewBox: null, width: null, height: null, pathCount: 0, elementCount: 0, hasStyle: false };
   }
-
-  const viewBox = svg.getAttribute('viewBox');
-  const width = svg.getAttribute('width');
-  const height = svg.getAttribute('height');
-  const pathCount = svg.querySelectorAll('path').length;
-  const elementCount = svg.querySelectorAll('*').length;
-  const hasStyle =
-    svg.querySelector('style') !== null ||
-    svgText.includes('style=') ||
-    svgText.includes('<style');
 
   return {
     fileName,
-    viewBox,
-    width,
-    height,
-    pathCount,
-    elementCount,
-    hasStyle,
+    viewBox: svg.getAttribute('viewBox'),
+    width: svg.getAttribute('width'),
+    height: svg.getAttribute('height'),
+    pathCount: svg.querySelectorAll('path').length,
+    elementCount: svg.querySelectorAll('*').length,
+    hasStyle: svg.querySelector('style') !== null || svgText.includes('style='),
   };
 }
 
-// 安全地验证 SVG 路径是否来自本地 public 目录
 function isValidSvgPath(path: string): boolean {
   return path.startsWith('/examples/') && path.endsWith('.svg');
 }
@@ -56,54 +36,38 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<string>('my_svgs');
   const [selectedExample, setSelectedExample] = useState<SvgExample | null>(null);
   const [inputText, setInputText] = useState('');
-
   const [originalSvg, setOriginalSvg] = useState<string | null>(null);
   const [generatedSvg, setGeneratedSvg] = useState<string | null>(null);
   const [originalInfo, setOriginalInfo] = useState<SvgInfo | null>(null);
   const [generatedInfo, setGeneratedInfo] = useState<SvgInfo | null>(null);
-
   const [isLoadingOriginal, setIsLoadingOriginal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // 加载 manifest
   useEffect(() => {
     fetch('/examples/manifest.json')
       .then((res) => res.json())
       .then((data: Manifest) => {
         setExamples(data.examples);
-        // 默认选择第一个 my_svgs 示例
         const first = data.examples.find((e) => e.category === 'my_svgs');
-        if (first) {
-          setSelectedExample(first);
-        }
+        if (first) setSelectedExample(first);
       })
-      .catch((err) => {
-        console.error('加载 manifest 失败:', err);
-      });
+      .catch((err) => console.error('加载 manifest 失败:', err));
   }, []);
 
-  // 加载选中的 SVG
   const loadSvg = useCallback(async (example: SvgExample) => {
     if (!isValidSvgPath(example.svgPath)) {
       setLoadError('无效的 SVG 路径');
       return;
     }
-
     setIsLoadingOriginal(true);
     setLoadError(null);
-
     try {
       const res = await fetch(example.svgPath);
-      if (!res.ok) {
-        throw new Error(`加载失败: ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`加载失败: ${res.status}`);
       const svgText = await res.text();
       setOriginalSvg(svgText);
-
-      // 解析 SVG 信息
-      const fileName = example.svgPath.split('/').pop() || example.id;
-      setOriginalInfo(parseSvgInfo(svgText, fileName));
+      setOriginalInfo(parseSvgInfo(svgText, example.svgPath.split('/').pop() || example.id));
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : '加载 SVG 失败');
       setOriginalSvg(null);
@@ -113,64 +77,45 @@ export default function Home() {
     }
   }, []);
 
-  // 当选中示例变化时加载 SVG
   useEffect(() => {
     if (selectedExample) {
       loadSvg(selectedExample);
-      // 清除之前的生成结果
       setGeneratedSvg(null);
       setGeneratedInfo(null);
     }
   }, [selectedExample, loadSvg]);
 
-  // 切换分类时，选择该分类的第一个示例
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
     const first = examples.find((e) => e.category === category);
-    if (first) {
-      setSelectedExample(first);
-    }
+    if (first) setSelectedExample(first);
   };
 
-  // 模拟 Stage 1 编码解码：对原始 SVG 进行微小变换
   const transformSvg = (svgText: string): string => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(svgText, 'image/svg+xml');
     const svg = doc.querySelector('svg');
     if (!svg) return svgText;
-
-    // 对路径数据添加微小扰动，模拟量化误差
-    const paths = svg.querySelectorAll('path');
-    paths.forEach((path) => {
+    svg.querySelectorAll('path').forEach((path) => {
       const d = path.getAttribute('d');
       if (d) {
-        const transformedD = d.replace(/([0-9]+\.?[0-9]*)/g, (match) => {
+        path.setAttribute('d', d.replace(/([0-9]+\.?[0-9]*)/g, (match) => {
           const num = parseFloat(match);
-          const perturbation = num * (Math.random() * 0.03 - 0.015);
-          return (num + perturbation).toFixed(2);
-        });
-        path.setAttribute('d', transformedD);
+          return (num + num * (Math.random() * 0.03 - 0.015)).toFixed(2);
+        }));
       }
     });
-
     svg.setAttribute('data-reconstructed', 'true');
     return new XMLSerializer().serializeToString(svg);
   };
 
-  // Mock 生成函数 - 对原始 SVG 进行变换重建
   const handleGenerate = async () => {
     if (!selectedExample || !originalSvg) return;
-
     setIsGenerating(true);
-
-    // 模拟 Stage 1 处理时间
-    const delay = 1500 + Math.random() * 500;
-    await new Promise((resolve) => setTimeout(resolve, delay));
-
+    await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 500));
     try {
       const reconstructedSvg = transformSvg(originalSvg);
       setGeneratedSvg(reconstructedSvg);
-
       const fileName = selectedExample.svgPath.split('/').pop() || selectedExample.id;
       setGeneratedInfo(parseSvgInfo(reconstructedSvg, `${fileName} (重建)`));
     } catch (err) {
@@ -205,7 +150,6 @@ export default function Home() {
             onGenerate={handleGenerate}
             isGenerating={isGenerating}
           />
-
           <div className="api-note">
             <h4>API 协议草案</h4>
             <pre>{`POST /api/generate
@@ -240,17 +184,11 @@ Response:
               emptyText="点击「生成」按钮查看结果"
             />
           </div>
-
           <div className="info-row">
             <InfoCard info={originalInfo} title="原始 SVG 信息" />
             <InfoCard info={generatedInfo} title="生成 SVG 信息" />
           </div>
-
-          {/* Stage 1 流水线可视化 */}
-          <PipelineVisualizer
-            isProcessing={isGenerating}
-            svgContent={originalSvg}
-          />
+          <PipelineVisualizer isProcessing={isGenerating} svgContent={originalSvg} />
         </section>
       </main>
 
