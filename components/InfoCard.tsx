@@ -1,6 +1,6 @@
 "use client";
 
-import { SvgInfo } from '@/types';
+import { SvgInfo } from '@/lib/types';
 
 interface InfoCardProps {
   info: SvgInfo | null;

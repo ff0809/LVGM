@@ -1,6 +1,6 @@
 "use client";
 
-import { SvgExample } from '@/types';
+import { SvgExample } from '@/lib/types';
 
 interface ControlPanelProps {
   categories: string[];

@@ -5,7 +5,7 @@ import { ControlPanel } from '@/components/ControlPanel';
 import { SvgPreview } from '@/components/SvgPreview';
 import { InfoCard } from '@/components/InfoCard';
 import { PipelineVisualizer } from '@/components/PipelineVisualizer';
-import { SvgExample, Manifest, SvgInfo } from '@/types';
+import { SvgExample, Manifest, SvgInfo } from '@/lib/types';
 
 // 解析 SVG 文本，提取信息
 function parseSvgInfo(svgText: string, fileName: string): SvgInfo {
