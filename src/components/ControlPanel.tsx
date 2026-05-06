@@ -1,6 +1,4 @@
-"use client";
-
-import { SvgExample } from '@/lib/types';
+import { SvgExample } from '../types';
 
 interface ControlPanelProps {
   categories: string[];
@@ -16,11 +14,20 @@ interface ControlPanelProps {
 }
 
 export function ControlPanel({
-  categories, selectedCategory, onCategoryChange,
-  examples, selectedExample, onExampleChange,
-  inputText, onInputTextChange, onGenerate, isGenerating,
+  categories,
+  selectedCategory,
+  onCategoryChange,
+  examples,
+  selectedExample,
+  onExampleChange,
+  inputText,
+  onInputTextChange,
+  onGenerate,
+  isGenerating,
 }: ControlPanelProps) {
-  const filteredExamples = examples.filter((e) => e.category === selectedCategory);
+  const filteredExamples = examples.filter(
+    (e) => e.category === selectedCategory
+  );
 
   return (
     <div className="control-panel">
@@ -28,7 +35,11 @@ export function ControlPanel({
 
       <div className="control-group">
         <label htmlFor="category">分类 (Category)</label>
-        <select id="category" value={selectedCategory} onChange={(e) => onCategoryChange(e.target.value)}>
+        <select
+          id="category"
+          value={selectedCategory}
+          onChange={(e) => onCategoryChange(e.target.value)}
+        >
           {categories.map((cat) => (
             <option key={cat} value={cat}>
               {cat === 'my_svgs' ? '书法笔画 (Calligraphy)' : 'DiffVG 图形'}
@@ -43,13 +54,17 @@ export function ControlPanel({
           id="example"
           value={selectedExample?.id || ''}
           onChange={(e) => {
-            const ex = filteredExamples.find((ex) => ex.id === e.target.value);
-            if (ex) onExampleChange(ex);
+            const example = filteredExamples.find((ex) => ex.id === e.target.value);
+            if (example) onExampleChange(example);
           }}
         >
-          <option value="" disabled>请选择...</option>
+          <option value="" disabled>
+            请选择...
+          </option>
           {filteredExamples.map((ex) => (
-            <option key={ex.id} value={ex.id}>{ex.label}</option>
+            <option key={ex.id} value={ex.id}>
+              {ex.label}
+            </option>
           ))}
         </select>
       </div>
@@ -66,7 +81,11 @@ export function ControlPanel({
         <small className="hint">此字段仅用于展示，Mock 模式下不做真实生成</small>
       </div>
 
-      <button className="generate-btn" onClick={onGenerate} disabled={isGenerating || !selectedExample}>
+      <button
+        className="generate-btn"
+        onClick={onGenerate}
+        disabled={isGenerating || !selectedExample}
+      >
         {isGenerating ? '生成中...' : '生成 (Generate)'}
       </button>
     </div>
