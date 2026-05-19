@@ -381,14 +381,115 @@ body {
 .result-note { font-size: 11px; color: #aaa; margin-top: 6px; }
 .results-note { font-size: 12px; color: #aaa; font-style: italic; }
 
-/* ===== DEMO SECTION & LVGM INTERACTIVE APP ===== */
+/* ===== DEMO SECTION & SYSTEM INTEGRATION ===== */
 .demo-section { padding-bottom: 40px; }
 
-/* 核心两栏包裹器 */
+/* ----------------------------------------------------
+   [区域 A] 还原 Stage 1 VQ-VAE 流水线演示专属样式 (完美恢复图3)
+   ---------------------------------------------------- */
+.demo-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  margin-top: 20px;
+}
+
+.demo-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.demo-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.control-panel {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.control-panel h2 { margin: 0 0 16px; font-size: 15px; font-weight: 600; color: #222; }
+
+.preview-row { display: flex; gap: 16px; }
+.info-row { display: flex; gap: 16px; }
+
+.svg-preview {
+  flex: 1;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.svg-preview.generated { border: 2px solid rgba(102,126,234,0.4); }
+.preview-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.svg-preview h3 { margin: 0; font-size: 14px; font-weight: 600; color: #333; }
+
+.preview-subtitle {
+  font-size: 11px;
+  color: #764ba2;
+  background: rgba(118,75,162,0.08);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.preview-container {
+  background: #fafafa;
+  border: 1px dashed #e0e0e0;
+  border-radius: 8px;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.svg-render { padding: 14px; display: flex; align-items: center; justify-content: center; }
+.svg-render svg { max-width: 100%; max-height: 160px; width: auto; height: auto; }
+
+.info-card { 
+  flex: 1; 
+  background: #fff; 
+  border: 1px solid #eee; 
+  border-radius: 12px; 
+  padding: 16px; 
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04); 
+}
+.info-card h4 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: #666; }
+.info-card .no-info { color: #bbb; font-size: 12px; margin: 0; }
+.info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.info-item { display: flex; flex-direction: column; gap: 2px; }
+.info-label { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; }
+.info-value { font-size: 12px; color: #333; font-weight: 500; }
+
+.api-note {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.api-note h4 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: #666; }
+.api-note pre { margin: 0; padding: 10px; font-size: 11px; font-family: 'SF Mono', Monaco, Consolas, monospace; background: #f7f7f7; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; color: #333; }
+
+
+/* ----------------------------------------------------
+   [区域 B] Stage 2 LVGM 真实实时生成演练面板专属新样式 (高品质控制台)
+   ---------------------------------------------------- */
 .api-demo-wrapper {
   display: flex;
   gap: 28px;
-  align-items: stretch; /* 让左右两栏等高，视觉极具对称美 */
+  align-items: stretch;
   background: #ffffff;
   border: 1px solid #e8eaf0;
   border-radius: 16px;
@@ -397,7 +498,6 @@ body {
   margin-top: 20px;
 }
 
-/* 左侧控制面板固定宽度，防止被右侧大图强行挤压变形 */
 .api-demo-controls {
   width: 350px; 
   flex-shrink: 0;
@@ -406,7 +506,6 @@ body {
   gap: 18px;
 }
 
-/* 统一的高级表单输入框样式 */
 .custom-input {
   width: 100%;
   padding: 11px 14px;
@@ -423,7 +522,6 @@ body {
   box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.15);
 }
 
-/* 智能快捷预设按钮行 */
 .given-toggle-row {
   display: flex;
   gap: 6px;
@@ -431,7 +529,6 @@ body {
   flex-wrap: wrap;
 }
 
-/* 精致扁平化小标签按钮 */
 .given-toggle-btn {
   padding: 6px 12px;
   font-size: 11px;
@@ -449,7 +546,6 @@ body {
   background: #ffffff;
 }
 
-/* 高级滑块参数盒 */
 .api-params-box {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -476,40 +572,6 @@ body {
   color: #764ba2;
 }
 
-/* 渐变主生成按钮 */
-.generate-btn {
-  width: 100%;
-  padding: 13px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #fff;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.25s;
-  box-shadow: 0 4px 14px rgba(118, 75, 162, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.generate-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(118, 75, 162, 0.45);
-}
-.generate-btn:disabled {
-  background: #cbd5e1 !important;
-  background-image: none !important;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-.generate-btn-loading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* 错误提示盒 */
 .api-error-box {
   padding: 12px 16px;
   background: #fef2f2;
@@ -521,7 +583,6 @@ body {
 }
 .error-title { font-weight: 600; margin-bottom: 2px; }
 
-/* 右侧画布承载区 */
 .api-demo-canvas {
   flex: 1;
   display: flex;
@@ -536,7 +597,6 @@ body {
   color: #334155;
 }
 
-/* 核心修复：强控 460px 高度，超出强行裁剪，彻底卡死大模型大图溢出问题 */
 .canvas-container {
   position: relative;
   height: 460px; 
@@ -551,7 +611,6 @@ body {
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.01);
 }
 
-/* 完美的内嵌 SVG 强力缩放器 */
 .canvas-container .raw-svg-container {
   position: relative;
   z-index: 1;
@@ -570,7 +629,6 @@ body {
   display: block;
 }
 
-/* 标准红色书法米字格样式 */
 .mi-zi-ge {
   position: absolute;
   inset: 0;
@@ -581,18 +639,6 @@ body {
 .mi-zi-ge-d1 { position: absolute; top: 50%; left: 50%; width: 150%; height: 0; border-top: 1px dotted rgba(239, 68, 68, 0.08); transform: translate(-50%, -50%) rotate(45deg); }
 .mi-zi-ge-d2 { position: absolute; top: 50%; left: 50%; width: 150%; height: 0; border-top: 1px dotted rgba(239, 68, 68, 0.08); transform: translate(-50%, -50%) rotate(-45deg); }
 
-/* 状态展示 */
-.loading-state, .empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  color: #94a3b8;
-  font-size: 13px;
-  z-index: 2;
-}
-
-/* 精致图例说明与元数据看板 */
 .canvas-legend {
   display: flex;
   align-items: center;
@@ -629,6 +675,60 @@ body {
   border: 1px solid #e2e8f0;
 }
 
+
+/* ----------------------------------------------------
+   [区域 C] 跨组组件底层共享公共样式 (按钮、表单控制、基础骨架动画)
+   ---------------------------------------------------- */
+.control-group { margin-bottom: 14px; }
+.control-group label { display: block; font-size: 12px; font-weight: 500; color: #666; margin-bottom: 5px; }
+.control-group select, .control-group input { width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; color: #333; }
+.control-group select:focus, .control-group input:focus { outline: none; border-color: #764ba2; }
+.control-group .hint { display: block; margin-top: 4px; font-size: 11px; color: #aaa; }
+
+.generate-btn {
+  width: 100%;
+  padding: 13px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.25s;
+  box-shadow: 0 4px 14px rgba(118, 75, 162, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.generate-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(118, 75, 162, 0.45);
+}
+.generate-btn:disabled {
+  background: #cbd5e1 !important;
+  background-image: none !important;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.generate-btn-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loading-state, .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: #94a3b8;
+  font-size: 13px;
+  z-index: 2;
+}
+
+.spinner { width: 22px; height: 22px; border: 3px solid #eee; border-top-color: #764ba2; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 /* ===== PIPELINE ===== */
 .pipeline-visualizer { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
 .pipeline-visualizer h3 { margin: 0 0 14px; font-size: 14px; font-weight: 600; color: #333; }
