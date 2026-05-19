@@ -700,6 +700,19 @@ body {
   .dataset-stats { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* ===== API DEMO SVG CANVAS ===== */
+.pattern-mi-zi-ge {
+  position: relative;
+}
+
+.raw-svg-container svg {
+  width: 100%;
+  height: 100%;
+  max-width: 400px;
+  max-height: 400px;
+}
+
+/* ===== FOOTER ===== */
 .footer {
   background: #1e1b4b;
   padding: 24px 32px;
