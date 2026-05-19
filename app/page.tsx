@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { HeroSection } from '@/components/HeroSection';
 import { DatasetSection } from '@/components/DatasetSection';
 import { BackgroundSection, MethodSection, InnovationSection, ResultsSection } from '@/components/PaperSections';
+import { ApiDemoSection } from '@/components/ApiDemoSection';
 import { ControlPanel } from '@/components/ControlPanel';
 import { SvgPreview } from '@/components/SvgPreview';
 import { InfoCard } from '@/components/InfoCard';
@@ -131,12 +132,15 @@ export default function Home() {
         <InnovationSection />
         <ResultsSection />
 
-        {/* Demo section */}
-        <section id="demo" className="content-section demo-section">
-          <div className="section-label">Demo 演示</div>
-          <h2 className="section-title">Stage 1: Vectorization 交互演示</h2>
+        {/* Real API Demo */}
+        <ApiDemoSection />
+
+        {/* Stage 1 VQ-VAE Pipeline (Mock) */}
+        <section id="pipeline" className="content-section demo-section">
+          <div className="section-label">技术细节</div>
+          <h2 className="section-title">Stage 1: VQ-VAE 流水线演示</h2>
           <p className="section-desc">
-            选择一个示例字形，点击「生成」查看 VQ-VAE 编码 / 解码的完整流水线过程（当前为 Mock 演示，后续接入推理服务）。
+            可视化展示 VQ-VAE 编码 / 解码的完整流程（Mock 演示）。
           </p>
 
           <div className="demo-layout">
