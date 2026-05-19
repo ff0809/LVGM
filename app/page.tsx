@@ -121,10 +121,8 @@ export default function Home() {
 
   return (
     <div className="app">
-      {/* Top: sticky nav + hero */}
       <HeroSection />
 
-      {/* Paper content sections */}
       <div className="paper-content">
         <BackgroundSection />
         <DatasetSection />
@@ -157,15 +155,6 @@ export default function Home() {
                 onGenerate={handleGenerate}
                 isGenerating={isGenerating}
               />
-              <div className="api-note">
-                <h4>API 协议草案</h4>
-                <pre>{`POST /api/generate
-{
-  "text": "一",
-  "baseExampleId": "heng",
-  "style": "kaishu"
-}`}</pre>
-              </div>
             </aside>
 
             <div className="demo-main">
