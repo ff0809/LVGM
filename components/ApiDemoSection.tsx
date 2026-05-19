@@ -17,7 +17,7 @@ export function ApiDemoSection() {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const response = await fetch('http://202.120.188.3:21789/api/generate', {
+      const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -77,15 +77,23 @@ export function ApiDemoSection() {
                 <div className="flex gap-2">
                   <button 
                     onClick={() => setGiven('all')}
-                    className={`text-xs px-2 py-1 rounded transition ${given === 'all' ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+                    className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
+                      given === 'all' 
+                        ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-md' 
+                        : 'bg-white border border-slate-300 text-slate-600 hover:border-purple-400 hover:text-purple-600'
+                    }`}
                   >
-                    智能全给
+                    🎯 智能全给
                   </button>
                   <button 
                     onClick={() => setGiven('1')}
-                    className={`text-xs px-2 py-1 rounded transition ${given === '1' ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+                    className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
+                      given === '1' 
+                        ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-md' 
+                        : 'bg-white border border-slate-300 text-slate-600 hover:border-purple-400 hover:text-purple-600'
+                    }`}
                   >
-                    只留首笔
+                    ✏️ 只留首笔
                   </button>
                 </div>
               </div>
