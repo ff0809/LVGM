@@ -8,7 +8,6 @@ import { ControlPanel } from '@/components/ControlPanel';
 import { SvgPreview } from '@/components/SvgPreview';
 import { InfoCard } from '@/components/InfoCard';
 import { PipelineVisualizer } from '@/components/PipelineVisualizer';
-import { GenerateDemo } from '@/components/GenerateDemo';
 import { SvgExample, Manifest, SvgInfo } from '@/lib/types';
 
 function parseSvgInfo(svgText: string, fileName: string): SvgInfo {
@@ -121,8 +120,10 @@ export default function Home() {
 
   return (
     <div className="app">
+      {/* Top: sticky nav + hero */}
       <HeroSection />
 
+      {/* Paper content sections */}
       <div className="paper-content">
         <BackgroundSection />
         <DatasetSection />
@@ -130,24 +131,14 @@ export default function Home() {
         <InnovationSection />
         <ResultsSection />
 
-        {/* ---- Main API Demo ---- */}
-        <section id="demo" className="content-section">
-          <div className="section-label">在线演示</div>
-          <h2 className="section-title">LVGM 汉字生成演示</h2>
+        {/* Demo section */}
+        <section id="demo" className="content-section demo-section">
+          <div className="section-label">Demo 演示</div>
+          <h2 className="section-title">Stage 1: Vectorization 交互演示</h2>
           <p className="section-desc">
-            输入任意汉字，选择已知笔画数量，调用后端大模型推理接口，实时生成 SVG 矢量字形。
-            <span className="api-endpoint-badge">POST http://202.120.188.3:21789/api/generate</span>
+            选择一个示例字形，点击「生成」查看 VQ-VAE 编码 / 解码的完整流水线过程（当前为 Mock 演示，后续接入推理服务）。
           </p>
-          <GenerateDemo />
-        </section>
 
-        {/* ---- Stage 1 Pipeline (Mock) ---- */}
-        <section id="pipeline" className="content-section">
-          <div className="section-label">技术演示</div>
-          <h2 className="section-title">Stage 1: Vectorization 流水线</h2>
-          <p className="section-desc">
-            展示 VQ-VAE 编码 / 解码的完整流水线过程：SVG → 64×3 笔画参数 → 特征提取 → 向量量化（8×8 索引矩阵）→ 解码重建。
-          </p>
           <div className="demo-layout">
             <aside className="demo-sidebar">
               <ControlPanel
@@ -162,7 +153,17 @@ export default function Home() {
                 onGenerate={handleGenerate}
                 isGenerating={isGenerating}
               />
+              <div className="api-note">
+                <h4>API 协议草案</h4>
+                <pre>{`POST /api/generate
+{
+  "text": "一",
+  "baseExampleId": "heng",
+  "style": "kaishu"
+}`}</pre>
+              </div>
             </aside>
+
             <div className="demo-main">
               <div className="preview-row">
                 <SvgPreview
@@ -173,15 +174,15 @@ export default function Home() {
                   onRetry={() => selectedExample && loadSvg(selectedExample)}
                 />
                 <SvgPreview
-                  title="重建结果 (Reconstructed)"
+                  title="生成结果 (Generated)"
                   svgContent={generatedSvg}
                   isLoading={isGenerating}
-                  emptyText="点击「生成」查看 VQ-VAE 重建结果"
+                  emptyText="点击「生成」按钮查看结果"
                 />
               </div>
               <div className="info-row">
                 <InfoCard info={originalInfo} title="原始 SVG 信息" />
-                <InfoCard info={generatedInfo} title="重建 SVG 信息" />
+                <InfoCard info={generatedInfo} title="生成 SVG 信息" />
               </div>
               <PipelineVisualizer isProcessing={isGenerating} svgContent={originalSvg} />
             </div>
