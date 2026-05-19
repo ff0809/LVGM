@@ -566,7 +566,140 @@ body {
 .render-status { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #166534; }
 .check-icon { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; background: #22c55e; color: #fff; border-radius: 50%; font-size: 13px; font-weight: bold; }
 
-/* ===== FOOTER ===== */
+/* ===== DATASET STATS ===== */
+.dataset-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.dataset-stat-card {
+  padding: 18px 16px;
+  background: #fff;
+  border-radius: 10px;
+  border-left: 4px solid #764ba2;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  text-align: center;
+}
+
+.stat-num {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #888;
+}
+
+/* ===== FONTS SEARCH ===== */
+.fonts-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.fonts-search-input {
+  flex: 1;
+  padding: 9px 14px;
+  font-size: 13px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fff;
+  color: #333;
+  transition: border-color 0.2s;
+}
+
+.fonts-search-input:focus {
+  outline: none;
+  border-color: #764ba2;
+}
+
+.fonts-search-count {
+  font-size: 12px;
+  color: #999;
+  white-space: nowrap;
+}
+
+/* ===== FONTS TABLE (updated) ===== */
+.fonts-table-wrapper {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #eee;
+  overflow: auto;
+  max-height: 520px;
+}
+
+.fonts-notice {
+  padding: 14px 20px;
+  font-size: 12px;
+  color: #888;
+  line-height: 1.6;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.fonts-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.fonts-table th {
+  position: sticky;
+  top: 0;
+  padding: 11px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  background: #f9f9fb;
+  border-bottom: 1px solid #eee;
+  z-index: 1;
+}
+.fonts-table td { padding: 10px 14px; border-bottom: 1px solid #f4f4f4; color: #333; }
+.fonts-table tr:last-child td { border-bottom: none; }
+.fonts-table tr:hover td { background: #faf9ff; }
+
+.brand-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 7px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.font-file {
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 11px;
+  color: #444;
+  white-space: nowrap;
+}
+
+.font-name-cn { font-weight: 500; color: #222; }
+
+.type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background: rgba(118,75,162,0.08);
+  color: #764ba2;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.font-charset { font-size: 11px; color: #888; }
+.font-format { font-size: 11px; color: #aaa; }
+.font-year { font-size: 12px; color: #555; font-weight: 500; }
+
+/* ===== RESPONSIVE DATASET ===== */
+@media (max-width: 768px) {
+  .dataset-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
 .footer {
   background: #1e1b4b;
   padding: 24px 32px;

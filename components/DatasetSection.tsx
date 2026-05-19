@@ -2,105 +2,182 @@
 
 import { useState } from 'react';
 
-const CALLIGRAPHY_SOURCES = [
-  { count: 233,  name: '111', author: '钟繇', desc: '小楷，楷书性书法史成熟代表作，点画遒劲朴茂，字形宽博端方，极具安平朴厚书风魅力。真道不传，行天不扶本，为古代小楷范本，深受历代二王及后生者欢迎。' },
-  { count: 587,  name: '东方朔画赞', author: '颜真卿', desc: '唐天宝十三年（754年）作，颜真卿早年书写代表作，话体浓博书水，笔画遒劲扎，邦放有方，中锋运笔形态各异，蔚著之英正既形塑颜体典型风格。' },
-  { count: 167,  name: '麻姑仙坛记', author: '颜真卿', desc: '唐调剂联邦则同公利，中带刚笔，宏落用笔，有行笔力。行笔力于胆识，初享知见觉其情，绑在形形颜真卿成熟颜体风格之代表作。' },
-  { count: 1037, name: '自书告身帖', author: '颜真卿', desc: '颜真卿晚年书法，以行楷书写，笔力遒劲苍老，既古典浑朴，已达到了大气天人、气魄公允、力道厚重的年迈报复作。' },
-  { count: 2479, name: '灵飞经', author: '传钟绍京', desc: '小楷，作为唐代优质小字书，笔划风格变化，以新行柔完全，且四明自然流淌，分别提取所得，笔法宽宏润适，为历代习小楷必读范本。' },
-  { count: 234,  name: '教弟子言', author: '柳公权', desc: '信件，融合了明净清俊特点，坚方劲道，由行楷相结，以行楷相综合了自己的书法楷书结字特完整了行书刚润兼顾，运速庐守序的艺术特点。' },
-  { count: 75,   name: '山堂诗帖', author: '蔡襄', desc: '行书，北宋熙宁十年（1067年），书法巨人，来源明细出，颜真卿，志百合的情怀，行书的诠释，求取秀出笔，天真心迷，为颜藏学书字特殊之作。' },
-  { count: 68,   name: '归去来兮', author: '苏轼', desc: '行楷书行文，笔形方正丰满，整笔分明，刀笔心上，中实颜楷，上引书楷，力入书楷书方正绕行，书道行石提在图整楷写字清晰之作。' },
-  { count: 391,  name: '醉翁亭记', author: '苏轼', desc: '兼有行厚、敦敦楷情、苏轼特书，字形力画蓬勃结构，外圆内虚，形式化在草；笔划到特综倡宣颜笔意义之，文字与书法互辉捧，结构分格。' },
-  { count: 40,   name: '寒山子庵居士诗帖', author: '黄庭坚', desc: '行书，又处《同时按比利两线草》，笔画线综综起两倡稳，笔画如之/无穿透，体现将行书中中合收放，竖开开明奶的流行结构结构特征。' },
-  { count: 105,  name: '松风阁诗帖', author: '黄庭坚', desc: '行书。（1102年），代表了北宋代……' },
+const FONT_SOURCES = [
+  { file: 'HYBaiQingTiJ.ttf',                name: '汉仪柏青简体',         type: '手写体 (美术字)',  charset: 'J, F, W, L', year: 2002 },
+  { file: 'HYChangLiSongKeBen(Original)W.ttf',name: '汉仪昌黎宋刻本原版',   type: '印刷体 (雕版)',    charset: 'J, F, W, L', year: 2018 },
+  { file: 'HYDaLiShuJ.ttf',                  name: '汉仪大隶书简体',       type: '书法体 (隶书)',    charset: 'J, F, W, L', year: 1996 },
+  { file: 'HYDunHuangXieJingW.ttf',           name: '汉仪敦煌写经体',       type: '书法体 (古隶)',    charset: 'J, F, W, L', year: 2018 },
+  { file: 'HYGuLiW.ttf',                     name: '汉仪古隶',             type: '书法体 (隶书)',    charset: 'J, F, W, L', year: 2019 },
+  { file: 'HYShangWeiHeFengTiW.ttf',          name: '汉仪尚巍和风体',       type: '手写体 (行书)',    charset: 'J, F, W, L', year: 2020 },
+  { file: 'HYShouJinShuJ.ttf',               name: '汉仪瘦金书简体',       type: '书法体 (行楷)',    charset: 'J, F, W, L', year: 2000 },
+  { file: 'HYShuTongTiJ.ttf',                name: '汉仪舒同体简体',       type: '书法体 (行书)',    charset: 'J, F, W, L', year: 1996 },
+  { file: 'HYWeiBeiJ.ttf',                   name: '汉仪魏碑简',           type: '印刷体 (魏楷)',    charset: 'J, F, W, L', year: 1996 },
+  { file: 'HYYanHuShouShuW.ttf',             name: '汉仪彦湖手书体',       type: '手写体 (行书)',    charset: 'J, F, W, L', year: 2019 },
+  { file: 'HYYanKaiW.ttf',                   name: '汉仪颜真卿楷体',       type: '书法体 (楷书)',    charset: 'J, F, W, L', year: 2019 },
+  { file: 'HYZengXiangChanQuTiW.ttf',         name: '汉仪曾翔禅趣体',       type: '手写体 (隶楷)',    charset: 'J, F, W, L', year: 2020 },
+  { file: 'HanyiSentyJournal.ttf',            name: '汉仪新蒂手札体',       type: '手写体 (行楷)',    charset: 'J, F, W, L', year: 2018 },
+  { file: 'HanyiSentyZHAO.ttf',              name: '汉仪新蒂赵孟頫体',     type: '书法体 (行楷)',    charset: 'J, L',       year: 2016 },
+  { file: 'FZSuXSHTWBLSJF.ttf',              name: '苏新诗好太王碑隶书',   type: '书法体 (隶楷)',    charset: 'K',          year: 2023 },
+  { file: 'FZSXSLKJF.ttf',                   name: '苏新诗柳楷',           type: '书法体 (楷书)',    charset: 'K',          year: 2007 },
+  { file: 'STFDBTYTFU.ttf',                  name: '书体坊颜真卿楷书',     type: '书法体 (楷书)',    charset: 'F',          year: 2019 },
+  { file: 'STFHSJKJF.ttf',                   name: '书体坊何绍基楷书',     type: '书法体 (行楷)',    charset: 'K',          year: 2019 },
+  { file: 'STFWangDXSJF.ttf',                name: '书体坊王铎行书',       type: '书法体 (行书)',    charset: 'K',          year: 2021 },
+  { file: 'STFZhaoMFXKJF.ttf',               name: '书体坊赵孟頫行楷',     type: '书法体 (行楷)',    charset: 'K',          year: 2021 },
+  { file: 'FZZJ-HLYHXSFU.ttf',               name: '方正字迹黄陵野鹤行书', type: '手写体 (行书)',    charset: 'F',          year: 2017 },
+  { file: 'FZBaDSRXKJW.ttf',                 name: '方正八大山人行楷',     type: '书法体 (行楷)',    charset: 'J',          year: 2021 },
+  { file: 'FZCaoQBLSJW.ttf',                 name: '方正曹全碑隶书',       type: '书法体 (隶书)',    charset: 'J',          year: 2023 },
+  { file: 'FZChuSLKSJW.ttf',                 name: '方正褚遂良楷书',       type: '书法体 (楷书)',    charset: 'J',          year: 2021 },
+  { file: 'FZCuanBZBKSJF.ttf',               name: '方正爨宝子碑楷书',     type: '书法体 (隶书)',    charset: 'K',          year: 2019 },
+  { file: 'FZDongQCXSJW.ttf',                name: '方正董其昌行书',       type: '书法体 (行书)',    charset: 'J',          year: 2021 },
+  { file: 'FZHaoTWBLSJW.ttf',                name: '方正好太王碑隶书',     type: '书法体 (隶楷)',    charset: 'J',          year: 2021 },
+  { file: 'FZHuangTJXSJF.ttf',               name: '方正黄庭坚行书',       type: '书法体 (行书)',    charset: 'K',          year: 2020 },
+  { file: 'FZLingFJXKJW.ttf',                name: '方正灵飞经小楷',       type: '书法体 (行楷)',    charset: 'J',          year: 2021 },
+  { file: 'FZLiQBLSJF.ttf',                  name: '方正礼器碑隶书',       type: '书法体 (隶书)',    charset: 'K',          year: 2023 },
+  { file: 'FZLiuBSLSJF.ttf',                 name: '方正刘炳森隶书',       type: '书法体 (隶书)',    charset: 'K',          year: 2019 },
+  { file: 'FZLiuGQKSJF.ttf',                 name: '方正柳公权楷书',       type: '书法体 (楷书)',    charset: 'K',          year: 2019 },
+  { file: 'FZLiYXSJW.ttf',                   name: '方正李邕行书',         type: '书法体 (行书)',    charset: 'J',          year: 2021 },
+  { file: 'FZLuXXSJF.ttf',                   name: '方正鲁迅行书',         type: '书法体 (行书)',    charset: 'K',          year: 2019 },
+  { file: 'FZMiFXSJW.ttf',                   name: '方正米芾行书',         type: '书法体 (行书)',    charset: 'J',          year: 2021 },
+  { file: 'FZOuYXKSJF.ttf',                  name: '方正欧阳询楷书',       type: '书法体 (楷书)',    charset: 'K',          year: 2023 },
+  { file: 'FZOuYZSXSJF.ttf',                 name: '方正欧阳中石行书',     type: '书法体 (行书)',    charset: 'K',          year: 2023 },
+  { file: 'FZQiGXKJF.ttf',                   name: '方正启功行楷',         type: '书法体 (行楷)',    charset: 'K',          year: 2019 },
+  { file: 'FZShenYMXSJF.ttf',                name: '方正沈尹默行书',       type: '书法体 (行书)',    charset: 'K',          year: 2019 },
+  { file: 'FZSHiMMKSJW.ttf',                 name: '方正石门铭楷书',       type: '书法体 (隶楷)',    charset: 'J',          year: 2021 },
+  { file: 'FZShiMSLSJW.ttf',                 name: '方正石门颂隶书',       type: '书法体 (隶书)',    charset: 'J',          year: 2021 },
+  { file: 'FZShuTXSJF.ttf',                  name: '方正舒同行书',         type: '书法体 (行书)',    charset: 'K',          year: 2020 },
+  { file: 'FZSuSXSJF.ttf',                   name: '方正苏轼行书',         type: '书法体 (行书)',    charset: 'K',          year: 2020 },
+  { file: 'FZTaiSJGJLSJF.ttf',               name: '方正泰山金刚经隶书',   type: '书法体 (隶楷)',    charset: 'K',          year: 2021 },
+  { file: 'FZWangDXCJF.ttf',                 name: '方正王铎行草',         type: '书法体 (行草)',    charset: 'K',          year: 2019 },
+  { file: 'FZWangXZXKJW.ttf',                name: '方正王献之小楷',       type: '书法体 (楷书)',    charset: 'J',          year: 2021 },
+  { file: 'FZWangXZXSJF.ttf',                name: '方正王羲之行书',       type: '书法体 (行书)',    charset: 'K',          year: 2023 },
+  { file: 'FZWenZMXCJF.ttf',                 name: '方正文征明行草',       type: '书法体 (行草)',    charset: 'K',          year: 2020 },
+  { file: 'FZWenZMXKJW.ttf',                 name: '方正文征明小楷',       type: '书法体 (行楷)',    charset: 'J',          year: 2021 },
+  { file: 'FZWuYRXSJF.ttf',                  name: '方正吴玉如行书',       type: '书法体 (行书)',    charset: 'K',          year: 2020 },
+  { file: 'FZXiPSJLSJF.ttf',                 name: '方正熹平石经隶书',     type: '书法体 (隶书)',    charset: 'K',          year: 2023 },
+  { file: 'FZXiXSLSJW.ttf',                  name: '方正西狭颂隶书',       type: '书法体 (隶书)',    charset: 'J',          year: 2021 },
+  { file: 'FZYangNSXSJW.ttf',                name: '方正杨凝式行书',       type: '书法体 (行楷)',    charset: 'J',          year: 2021 },
+  { file: 'FZYanZQKSJF.ttf',                 name: '方正颜真卿楷书',       type: '书法体 (楷书)',    charset: 'K',          year: 2020 },
+  { file: 'FZYiBSLSJW.ttf',                  name: '方正伊秉绶隶书',       type: '书法体 (隶书)',    charset: 'J',          year: 2023 },
+  { file: 'FZYiYBLSJW.ttf',                  name: '方正乙瑛碑隶书',       type: '书法体 (隶书)',    charset: 'J',          year: 2021 },
+  { file: 'FZZhangMLBKSJW.ttf',              name: '方正张猛龙碑楷书',     type: '书法体 (魏楷)',    charset: 'J',          year: 2021 },
+  { file: 'FZZhangQBLSJW.ttf',               name: '方正张迁碑隶书',       type: '书法体 (隶书)',    charset: 'J',          year: 2023 },
+  { file: 'FZZhaoJSJSJF.ttf',                name: '方正赵佶瘦金书',       type: '书法体 (行楷)',    charset: 'J, K',       year: 2020 },
+  { file: 'FZZhaoMFKSJF.ttf',                name: '方正赵孟頫楷书',       type: '书法体 (行楷)',    charset: 'J, K',       year: 2020 },
+  { file: 'FZZhaoMFXSJF.ttf',                name: '方正赵孟頫行书',       type: '书法体 (行书)',    charset: 'J, K',       year: 2020 },
+  { file: 'FZZHengWGBKSJW.ttf',              name: '方正郑文公碑楷书',     type: '书法体 (隶楷)',    charset: 'J',          year: 2021 },
+  { file: 'FZZhiYKSJW.ttf',                  name: '方正智永楷书',         type: '书法体 (行楷)',    charset: 'J',          year: 2023 },
 ];
 
-const FONT_SOURCES = [
-  { file: 'HYBaiQingTiJ.ttf',              name: '汉仪柏青简体',        type: '手写体(美术字)', year: 2002 },
-  { file: 'HYChangLiSongKeBen(Original)W.ttf', name: '汉仪昌黎宋刻本原版', type: '印刷体(离版)',   year: 2018 },
-  { file: 'HYDaLiShuJ.ttf',                name: '汉仪大隶书简体',      type: '书法体(隶书)',   year: 1996 },
-  { file: 'HYDunHuangXieJingW.ttf',        name: '汉仪敦煌写经体',      type: '书法体(古隶)',   year: 2018 },
-  { file: 'HYGuLiW.ttf',                   name: '汉仪古隶',            type: '书法体(隶书)',   year: 2019 },
-  { file: 'HYShangWeiHeFengTiW.ttf',       name: '汉仪尚巍和风体',      type: '手写体(行书)',   year: 2020 },
-  { file: 'HYShouJinShuJ.ttf',             name: '汉仪瘦金书简体',      type: '书法体(行楷)',   year: 2000 },
-  { file: 'HYShuTongTiJ.ttf',              name: '汉仪舒同体简体',      type: '手写体(行书)',   year: 1996 },
-  { file: 'HYWeiBeiJ.ttf',                 name: '汉仪魏碑简',          type: '印刷体(魏楷)',   year: 1996 },
-  { file: 'HYYanHuShouShuW.ttf',           name: '汉仪彦湖手书体',      type: '手写体(行书)',   year: 2019 },
+// 按字体品牌分组
+const BRAND_GROUPS = [
+  { brand: '汉仪字库 (HY)',  prefix: ['HY', 'Hanyi'],  color: '#667eea' },
+  { brand: '苏新诗 / 书体坊', prefix: ['FZSuX', 'FZSX', 'STF'], color: '#764ba2' },
+  { brand: '方正字库 (FZ)',  prefix: ['FZ', 'FZZJ'],  color: '#22c55e' },
 ];
 
 export function DatasetSection() {
-  const [tab, setTab] = useState<'calligraphy' | 'fonts'>('calligraphy');
+  const [search, setSearch] = useState('');
+
+  const filtered = FONT_SOURCES.filter(
+    (f) =>
+      f.file.toLowerCase().includes(search.toLowerCase()) ||
+      f.name.includes(search) ||
+      f.type.includes(search)
+  );
+
+  const hyFonts = FONT_SOURCES.filter(f => f.file.startsWith('HY') || f.file.startsWith('Hanyi')).length;
+  const stfFonts = FONT_SOURCES.filter(f => f.file.startsWith('STF') || f.file.startsWith('FZSuX') || f.file.startsWith('FZSX')).length;
+  const fzFonts = FONT_SOURCES.filter(f => f.file.startsWith('FZ') && !f.file.startsWith('FZSuX') && !f.file.startsWith('FZSX')).length;
 
   return (
     <section id="dataset" className="content-section">
       <div className="section-label">数据集</div>
-      <h2 className="section-title">数据来源 <span className="section-title-en">Data Collection</span></h2>
+      <h2 className="section-title">
+        数据来源 <span className="section-title-en">Data Collection</span>
+      </h2>
       <p className="section-desc">
-        构建了包含书法碑帖与现代汉字字体的双轨数据集。书法子集来源于历代名家真迹碑帖，
-        涵盖楷、行、隶、草各体；字体子集收录工业级 HY 系列字体，覆盖多种印刷与手写风格，
-        总计提供超过 <strong>15,000 张</strong>高质量矢量字形样本。
+        收录来自汉仪、方正、书体坊等主流字库厂商的 <strong>{FONT_SOURCES.length} 款</strong>商用书法字体，
+        涵盖楷书、行书、隶书、行楷、行草等多种书写风格，覆盖从古典碑帖到当代书法的广泛风格谱系，
+        共提供超过 <strong>390,000 张</strong>高质量矢量字形样本。
       </p>
 
-      {/* Tabs */}
-      <div className="dataset-tabs">
-        <button
-          className={`dataset-tab${tab === 'calligraphy' ? ' active' : ''}`}
-          onClick={() => setTab('calligraphy')}
-        >
-          书法碑帖来源 &nbsp;<span className="tab-count">30 帖 · 15,093 张</span>
-        </button>
-        <button
-          className={`dataset-tab${tab === 'fonts' ? ' active' : ''}`}
-          onClick={() => setTab('fonts')}
-        >
-          商用字体来源 &nbsp;<span className="tab-count">10 款 · 460 种</span>
-        </button>
+      {/* 统计卡片 */}
+      <div className="dataset-stats">
+        <div className="dataset-stat-card" style={{ borderColor: '#667eea' }}>
+          <div className="stat-num" style={{ color: '#667eea' }}>{hyFonts}</div>
+          <div className="stat-label">汉仪字库</div>
+        </div>
+        <div className="dataset-stat-card" style={{ borderColor: '#764ba2' }}>
+          <div className="stat-num" style={{ color: '#764ba2' }}>{stfFonts}</div>
+          <div className="stat-label">苏新诗 / 书体坊</div>
+        </div>
+        <div className="dataset-stat-card" style={{ borderColor: '#22c55e' }}>
+          <div className="stat-num" style={{ color: '#22c55e' }}>{fzFonts}</div>
+          <div className="stat-label">方正字库</div>
+        </div>
+        <div className="dataset-stat-card" style={{ borderColor: '#f59e0b' }}>
+          <div className="stat-num" style={{ color: '#f59e0b' }}>{FONT_SOURCES.length}</div>
+          <div className="stat-label">字体总数</div>
+        </div>
       </div>
 
-      {tab === 'calligraphy' && (
-        <div className="calligraphy-grid">
-          {CALLIGRAPHY_SOURCES.map((item) => (
-            <div key={item.name} className="calligraphy-card">
-              <div className="calligraphy-count">{item.count}</div>
-              <div className="calligraphy-info">
-                <h4>{item.name}<span className="calligraphy-author">（{item.author}）</span></h4>
-                <p>{item.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* 版权声明 */}
+      <div className="fonts-notice">
+        Fonts downloaded from the Internet are only for personal study and research. Font products are the crystals
+        created by type designers, who should enjoy copyrights. You could use the products for commercial purposes
+        only after license be authorized successfully.<br />
+        <span style={{ color: '#555' }}>所有字体仅供个人学习、研究、欣赏。如需商用，务必提前获得相应授权。</span>
+      </div>
 
-      {tab === 'fonts' && (
-        <div className="fonts-wrapper">
-          <p className="fonts-notice">
-            所有字体仅供个人学习、研究、欣赏。如需商用，务必提前获得相应授权。
-          </p>
-          <table className="fonts-table">
-            <thead>
-              <tr>
-                <th>Font list</th>
-                <th>Font name</th>
-                <th>Type</th>
-                <th>Format</th>
-                <th>Year</th>
-              </tr>
-            </thead>
-            <tbody>
-              {FONT_SOURCES.map((f) => (
+      {/* 搜索栏 */}
+      <div className="fonts-search-bar">
+        <input
+          type="text"
+          placeholder="搜索字体名称、风格类型..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="fonts-search-input"
+        />
+        <span className="fonts-search-count">显示 {filtered.length} / {FONT_SOURCES.length} 款</span>
+      </div>
+
+      {/* 字体表格 */}
+      <div className="fonts-table-wrapper">
+        <table className="fonts-table">
+          <thead>
+            <tr>
+              <th>Font list</th>
+              <th>Font name</th>
+              <th>Type</th>
+              <th>Charset</th>
+              <th>Format</th>
+              <th>Year</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((f) => {
+              const isHY = f.file.startsWith('HY') || f.file.startsWith('Hanyi');
+              const isSTF = f.file.startsWith('STF') || f.file.startsWith('FZSuX') || f.file.startsWith('FZSX');
+              const brandColor = isHY ? '#667eea' : isSTF ? '#764ba2' : '#22c55e';
+              return (
                 <tr key={f.file}>
-                  <td className="font-file">{f.file}</td>
-                  <td>{f.name}</td>
-                  <td>{f.type}</td>
-                  <td>OTF, TTF</td>
-                  <td>{f.year}</td>
+                  <td className="font-file">
+                    <span className="brand-dot" style={{ background: brandColor }} />
+                    {f.file}
+                  </td>
+                  <td className="font-name-cn">{f.name}</td>
+                  <td>
+                    <span className="type-badge">{f.type}</span>
+                  </td>
+                  <td className="font-charset">{f.charset}</td>
+                  <td className="font-format">OTF, TTF</td>
+                  <td className="font-year">{f.year}</td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }
