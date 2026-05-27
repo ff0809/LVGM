@@ -948,6 +948,36 @@ body {
   font-weight: 400;
 }
 
+/* ==========================================================================
+   ✨ LVGM 笔画级鼠标 Hover 联动与高级交互过滤系统
+   ========================================================================== */
+
+.interactive-stroke {
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              filter 0.25s ease, 
+              opacity 0.2s ease !important;
+  
+  /* 【关键技术点】指示浏览器：变换原点以笔画自身的可视包围盒(Bounding Box)中心为准，避免错位 */
+  transform-box: fill-box !important;
+  transform-origin: center !important;
+}
+
+/* 当鼠标悬停在某个具体笔画上时的视觉高大上特效 */
+.interactive-stroke:hover {
+  opacity: 0.95 !important;
+  /* 笔画精细等比轻微放大 4% */
+  transform: scale(1.04) translateY(-1px); 
+  /* 增加高精度学术风发光霓虹滤镜 + 提高局部亮度 */
+  filter: drop-shadow(0 2px 8px rgba(118, 75, 162, 0.55)) brightness(1.25) !important;
+}
+
+/* 增强体验：当悬停在某笔画上时，其余笔画微弱淡出，以更强烈地突出当前被选中的笔画 */
+.canvas-container:hover .interactive-stroke:not(:hover) {
+  opacity: 0.35;
+  filter: grayscale(0.2) contrast(0.9);
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1024px) {
   .bg-cards { grid-template-columns: 1fr; }
