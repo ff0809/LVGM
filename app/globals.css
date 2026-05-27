@@ -949,50 +949,66 @@ body {
 }
 
 /* ==========================================================================
-   ✨ LVGM 笔画级鼠标 Hover 联动与高级交互过滤系统
+   ✨ LVGM 笔画级鼠标 Hover 高级联动高亮系统（完美修复版）
    ========================================================================== */
 
 .interactive-stroke {
   cursor: pointer;
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), 
-              filter 0.25s ease, 
-              opacity 0.2s ease !important;
+  /* 丝滑的过渡动画，控制颜色、描边宽度和滤镜 */
+  transition: fill 0.2s ease-in-out, 
+              stroke 0.2s ease-in-out, 
+              stroke-width 0.2s ease-in-out, 
+              filter 0.25s ease-in-out !important;
   
-  /* 【关键技术点】指示浏览器：变换原点以笔画自身的可视包围盒(Bounding Box)中心为准，避免错位 */
-  transform-box: fill-box !important;
-  transform-origin: center !important;
+  /* 确保描边向外延伸，不侵占笔画原本的内部面积 */
+  stroke-alignment: center;
 }
 
-/* 当鼠标悬停在某个具体笔画上时的视觉高大上特效 */
-.interactive-stroke:hover {
-  opacity: 0.95 !important;
-  /* 笔画精细等比轻微放大 4% */
-  transform: scale(1.04) translateY(-1px); 
-  /* 增加高精度学术风发光霓虹滤镜 + 提高局部亮度 */
-  filter: drop-shadow(0 2px 8px rgba(118, 75, 162, 0.55)) brightness(1.25) !important;
+/* ----------------------------------------------------
+   1. 用户给定的黑色笔画 —— 悬停特效（唤醒为深邃科技紫）
+   ---------------------------------------------------- */
+.interactive-stroke[data-stroke-type="given"]:hover {
+  /* 变更为极具质感的深科技紫蓝色 */
+  fill: #4f46e5 !important; 
+  
+  /* 核心高亮：在原笔画外圈精细绘制一层亮紫色轮廓边框，产生肉眼可见的放大和立体感 */
+  stroke: #818cf8 !important;
+  stroke-width: 6px !important;
+  stroke-linejoin: round !important;
+  stroke-linecap: round !important;
+  
+  /* 学术风霓虹外发光滤镜 */
+  filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.85)) brightness(1.1) !important;
 }
 
-/* 增强体验：当悬停在某笔画上时，其余笔画微弱淡出，以更强烈地突出当前被选中的笔画 */
+/* ----------------------------------------------------
+   2. 模型生成的蓝色笔画 —— 悬停特效（唤醒为赛博多巴胺粉）
+   ---------------------------------------------------- */
+.interactive-stroke[data-stroke-type="generated"]:hover {
+  /* 变更为极为抢眼的鲜艳赛博粉红，与默认蓝色形成强烈对比 */
+  fill: #ff007f !important; 
+  
+  /* 核心高亮：在外圈精细绘制一层粉色荧光轮廓边框 */
+  stroke: #ff66b2 !important;
+  stroke-width: 6px !important;
+  stroke-linejoin: round !important;
+  stroke-linecap: round !important;
+  
+  /* 强烈的多巴胺发光特效 */
+  filter: drop-shadow(0 0 12px rgba(255, 0, 127, 0.9)) brightness(1.2) !important;
+}
+
+/* ----------------------------------------------------
+   3. 环境联动：当鼠标指着某一笔画时，其他已显现的笔画温柔暗淡，聚焦视线
+   ---------------------------------------------------- */
+/* 仅在整体书写完毕或未处于激烈动画状态时激活，完美避开动画鬼影冲突 */
+.canvas-container:hover .interactive-stroke {
+  will-change: filter, opacity;
+}
+
+/* 鼠标移入画布时，让没被指向的笔画半透明（只对当前已经历动画显现的笔画生效） */
 .canvas-container:hover .interactive-stroke:not(:hover) {
-  opacity: 0.35;
-  filter: grayscale(0.2) contrast(0.9);
-}
-
-/* ===== RESPONSIVE ===== */
-@media (max-width: 1024px) {
-  .bg-cards { grid-template-columns: 1fr; }
-  .innovation-cards { grid-template-columns: repeat(2, 1fr); }
-  .results-grid { grid-template-columns: repeat(2, 1fr); }
-  .calligraphy-grid { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 768px) {
-  .hero-title { font-size: 26px; }
-  .paper-content { padding: 0 16px 60px; }
-  .demo-layout { flex-direction: column; }
-  .demo-sidebar { width: 100%; }
-  .preview-row, .info-row { flex-direction: column; }
-  .nav-links { display: none; }
-  .innovation-cards { grid-template-columns: 1fr; }
-  .results-grid { grid-template-columns: repeat(2, 1fr); }
+  filter: contrast(0.8) saturate(0.8);
+  /* 适当降低未选中笔画的亮度，使被选中的笔画如同烈日般突出 */
+  opacity: 0.45; 
 }
