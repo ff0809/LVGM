@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 export function ApiDemoSection() {
   const [prompt, setPrompt] = useState('不');
@@ -13,24 +13,51 @@ export function ApiDemoSection() {
   const [meta, setMeta] = useState<{ genTime: number; genTokens: number } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // --- 新增：动态全流式书写过程控制状态 ---
+  const [animatedStep, setAnimatedStep] = useState(0);
+  const [totalGenerated, setTotalGenerated] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+
   // 快捷键智能逻辑：根据当前 prompt 汉字长度动态拼接 given 格式
   const applyPreset = (type: 'all' | 'all-but-last' | 'only-first') => {
     const len = prompt.trim().length || 1;
     if (type === 'all') {
-      setGiven(''); // 留空则不传，完美触发后端多字自动 "all,all..." 机制
+      setGiven(''); 
     } else if (type === 'all-but-last') {
       if (len <= 1) {
         setGiven('1');
       } else {
-        // 前面全给 all，最后一个字给 1 笔。例如 5个字: all,all,all,all,1
         const arr = Array(len - 1).fill('all');
         arr.push('1');
         setGiven(arr.join(','));
       }
     } else if (type === 'only-first') {
-      // 所有字都只给第 1 笔。例如 3个字: 1,1,1
       setGiven(Array(len).fill('1').join(','));
     }
+  };
+
+  // 核心动效：驱动笔画按时间步长依次显现
+  useEffect(() => {
+    if (!isAnimating || totalGenerated === 0) return;
+    
+    if (animatedStep >= totalGenerated) {
+      setIsAnimating(false);
+      return;
+    }
+
+    const intervalTime = Math.max(150, 400 - totalGenerated * 10); // 根据笔画多少动态调整书写速度
+    const timer = setTimeout(() => {
+      setAnimatedStep((prev) => prev + 1);
+    }, intervalTime);
+
+    return () => clearTimeout(timer);
+  }, [isAnimating, animatedStep, totalGenerated]);
+
+  // 手动触发重新播放动画
+  const handleReplay = () => {
+    if (!svgContent) return;
+    setAnimatedStep(0);
+    setIsAnimating(true);
   };
 
   const handleGenerate = async () => {
@@ -38,8 +65,10 @@ export function ApiDemoSection() {
     setErrorMsg(null);
     setSvgContent(null);
     setMeta(null);
+    setAnimatedStep(0);
+    setTotalGenerated(0);
+    setIsAnimating(false);
 
-    // 严谨过滤输入的空格和空字符
     const cleanPrompt = prompt.trim();
     const cleanGiven = given.trim();
 
@@ -58,8 +87,40 @@ export function ApiDemoSection() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setSvgContent(data.svg);
+        // 【核心改进】解析注入：将静态 SVG 变成可动态编程和交互的独立笔画对象
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(data.svg, 'image/svg+xml');
+        const paths = doc.querySelectorAll('path');
+        
+        let genCount = 0;
+        paths.forEach((path) => {
+          const fill = path.getAttribute('fill') || '';
+          const stroke = path.getAttribute('stroke') || '';
+          // 智能判定当前 path 是否属于 AI 预测生成的蓝色笔画范围
+          const isBlue = fill.includes('blue') || fill.includes('#0000ff') || fill.includes('#2563eb') || 
+                         stroke.includes('blue') || stroke.includes('#0000ff') || stroke.includes('#2563eb');
+          
+          if (isBlue) {
+            path.setAttribute('data-stroke-type', 'generated');
+            path.setAttribute('data-gen-idx', genCount.toString());
+            genCount++;
+          } else {
+            path.setAttribute('data-stroke-type', 'given');
+          }
+          // 注入全局高亮交互类名
+          path.classList.add('interactive-stroke');
+        });
+
+        const augmentedSvg = new XMLSerializer().serializeToString(doc);
+        
+        setSvgContent(augmentedSvg);
         setMeta({ genTime: data.gen_time, genTokens: data.gen_tokens });
+        setTotalGenerated(genCount);
+        
+        // 数据准备完毕，立刻开启书写过程动画演示
+        setAnimatedStep(0);
+        setIsAnimating(true);
+
       } else {
         setErrorMsg(data.detail || `请求失败，状态码: ${response.status}`);
       }
@@ -72,6 +133,23 @@ export function ApiDemoSection() {
 
   return (
     <section id="demo" className="content-section">
+      {/* 动态注入精细至笔画控制的局部 CSS 规则 */}
+      {svgContent && (
+        <style>{`
+          .raw-svg-container path[data-stroke-type="generated"] {
+            opacity: 0;
+            transition: opacity 0.4s ease-in-out, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform: scale(0.95);
+          }
+          ${Array.from({ length: animatedStep }).map((_, i) => `
+            .raw-svg-container path[data-gen-idx="${i}"] {
+              opacity: 1 !important;
+              transform: scale(1) !important;
+            }
+          `).join('')}
+        `}</style>
+      )}
+
       <div className="section-label">在线演示</div>
       <h2 className="section-title">
         LVGM 汉字生成演示
@@ -171,7 +249,20 @@ export function ApiDemoSection() {
 
         {/* 右侧画布区域 */}
         <div className="api-demo-canvas">
-          <h3>SVG 渲染画布 · Canvas</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3>SVG 渲染画布 · Canvas</h3>
+            {svgContent && !loading && (
+              <button 
+                type="button" 
+                onClick={handleReplay} 
+                disabled={isAnimating}
+                className="given-toggle-btn"
+                style={{ padding: '4px 10px', borderColor: '#764ba2', color: '#764ba2', opacity: isAnimating ? 0.5 : 1 }}
+              >
+                {isAnimating ? `🎬 正在播放 (${animatedStep}/${totalGenerated})` : '🔄 重新播放生成过程'}
+              </button>
+            )}
+          </div>
 
           <div className="canvas-container">
             {/* 精致红线米字格 */}
@@ -182,7 +273,7 @@ export function ApiDemoSection() {
               <div className="mi-zi-ge-d2" />
             </div>
 
-            {/* 核心修复：纯 CSS 强控大小的内嵌容器 */}
+            {/* 核心内嵌容器 */}
             {svgContent ? (
               <div
                 className="raw-svg-container"
@@ -214,6 +305,7 @@ export function ApiDemoSection() {
               <div className="legend-meta">
                 <span>⏱️ {meta.genTime}s</span>
                 <span>🪙 {meta.genTokens} tokens</span>
+                {totalGenerated > 0 && <span style={{ color: '#764ba2', fontWeight: 'bold' }}>✍️ 补全 {totalGenerated} 笔</span>}
               </div>
             )}
           </div>
