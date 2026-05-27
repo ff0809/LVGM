@@ -136,15 +136,17 @@ export function ApiDemoSection() {
       {/* 动态注入精细至笔画控制的局部 CSS 规则 */}
       {svgContent && (
         <style>{`
+          /* 未点亮的生成笔画，无论如何高高挂起绝对隐形，且不响应鼠标悬停 */
           .raw-svg-container path[data-stroke-type="generated"] {
             opacity: 0;
-            transition: opacity 0.4s ease-in-out, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            transform: scale(0.95);
+            pointer-events: none; 
+            transition: opacity 0.4s ease-in-out;
           }
+          /* 随着时间轴被点亮的笔画，恢复接收鼠标事件，并赋予完整不透明度 */
           ${Array.from({ length: animatedStep }).map((_, i) => `
             .raw-svg-container path[data-gen-idx="${i}"] {
               opacity: 1 !important;
-              transform: scale(1) !important;
+              pointer-events: auto !important;
             }
           `).join('')}
         `}</style>
