@@ -26,6 +26,9 @@ export function ApiDemoSection() {
   const [hoveredPointIdx, setHoveredPointIdx] = useState<number | null>(null); 
   const [modalSvgViewBox, setModalSvgViewBox] = useState<string>("0 0 1024 1200");
   
+  // --- 新增：人性化画布自由缩放比例状态 (100% - 400%) ---
+  const [zoom, setZoom] = useState<number>(100);
+
   // 用于克隆镜像笔画的原始样式样式
   const [mirrorTransform, setMirrorTransform] = useState<string>('');
   const [mirrorAttributes, setMirrorAttributes] = useState<{ fill: string; stroke: string; strokeWidth: string }>({
@@ -33,7 +36,7 @@ export function ApiDemoSection() {
   });
 
   const modalSvgRef = useRef<SVGSVGElement>(null);
-  const localGroupRef = useRef<SVGGElement>(null); // 精准定位空间原点的核心句柄
+  const localGroupRef = useRef<SVGGElement>(null);
 
   // 智能笔画预设
   const applyPreset = (type: 'all' | 'all-but-last' | 'only-first') => {
@@ -85,7 +88,6 @@ export function ApiDemoSection() {
       const svgEl = targetPath.closest('svg');
       const viewBox = svgEl?.getAttribute('viewBox') || "0 0 1024 1200";
       
-      // 【关键修复】提取父级字符组的 transform 属性（横向平移 translate 数据）
       const parentTransform = targetPath.parentElement?.getAttribute('transform') || '';
       const fill = targetPath.getAttribute('fill') || 'none';
       const stroke = targetPath.getAttribute('stroke') || 'none';
@@ -95,6 +97,7 @@ export function ApiDemoSection() {
       setMirrorAttributes({ fill, stroke, strokeWidth });
       setModalSvgViewBox(viewBox);
       setActiveEditPathId(pathId);
+      setZoom(100); // 每次打开新笔画默认初始化为 100% 原始大小
       
       // 精准解构分词
       const tokens = dAttr.split(/(-?\d+(?:\.\d+)?)/);
@@ -127,55 +130,69 @@ export function ApiDemoSection() {
     return newTokens.join('');
   };
 
-  // 【核心升级修复】由独立微调图层承载的高灵敏全局鼠标拖拽响应器
+  // 由独立微调图层承载的高灵敏全局鼠标拖拽响应器 (完美适配缩放与滚动)
   const handleGlobalMouseMove = (e: React.MouseEvent) => {
     if (draggedPointIdx === null || !modalSvgRef.current || !localGroupRef.current) return;
 
     const svgEl = modalSvgRef.current;
     const groupEl = localGroupRef.current;
 
-    // 1. 创建原生的 SVG 交互矩阵标定点
     const svgPoint = svgEl.createSVGPoint();
     svgPoint.x = e.clientX;
     svgPoint.y = e.clientY;
 
-    // 2. 获取当前克隆图层的屏幕坐标变换矩阵
+    // getScreenCTM 能够全自动捕获前端由于 Zoom 放大、容器 Scroll 滚动产生的全部物理位移偏量
     const ctm = groupEl.getScreenCTM();
     if (!ctm) return;
 
-    // 3. 执行逆矩阵映射：精准换算到与原笔画完完全全等价的局部空间坐标系，完美治愈错位飞走
     const localPoint = svgPoint.matrixTransform(ctm.inverse());
     
     const svgX = Math.round(localPoint.x);
     const svgY = Math.round(localPoint.y);
 
-    // 4. 只实时更新轻量级的 React 状态线，绝不触碰和重构底层大的 background HTML 字符串
     setControlPoints((prevPoints) => {
       const nextPoints = [...prevPoints];
       nextPoints[draggedPointIdx] = { ...nextPoints[draggedPointIdx], x: svgX, y: svgY };
+
+      const newTokens = [...pathTokens];
+      nextPoints.forEach((p) => {
+        newTokens[p.xIdx] = p.x.toString();
+        newTokens[p.yIdx] = p.y.toString();
+      });
+      const newD = newTokens.join('');
+
+      setSvgContent((prevSvg) => {
+        if (!prevSvg) return null;
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(prevSvg, 'image/xml+xml');
+        const path = doc.getElementById(activeEditPathId);
+        if (path) {
+          path.setAttribute('d', newD);
+          return new XMLSerializer().serializeToString(doc);
+        }
+        return prevSvg;
+      });
+
       return nextPoints;
     });
   };
 
-  // 【持久化保存核心】在点击关闭时，才一次性完成总数据反向序列化写回主界面
   const handleSaveAndClose = () => {
     if (!activeEditPathId || !svgContent) {
       setActiveEditPathId(null);
       return;
     }
-
     const finalD = buildDString(controlPoints, pathTokens);
     const parser = new DOMParser();
     const doc = parser.parseFromString(svgContent, 'image/svg+xml');
     const path = doc.getElementById(activeEditPathId);
-    
     if (path) {
       path.setAttribute('d', finalD);
-      // 永久持久化保存
       setSvgContent(new XMLSerializer().serializeToString(doc));
     }
     setActiveEditPathId(null);
     setDraggedPointIdx(null);
+    setZoom(100); // 显式归位
   };
 
   const handleGenerate = async () => {
@@ -240,7 +257,6 @@ export function ApiDemoSection() {
     }
   };
 
-  // 计算弹窗中当前独立图层上实时形变的路径 d 数据
   const currentLiveD = activeEditPathId ? buildDString(controlPoints, pathTokens) : '';
 
   return (
@@ -252,6 +268,9 @@ export function ApiDemoSection() {
             pointer-events: none; 
             transition: opacity 0.4s ease-in-out;
           }
+          .raw-svg-container path[data-stroke-type="generated"]:hover {
+            opacity: 0.95 !important;
+          }
           ${Array.from({ length: animatedStep }).map((_, i) => `
             .raw-svg-container path[data-gen-idx="${i}"] {
               opacity: 1 !important;
@@ -259,7 +278,6 @@ export function ApiDemoSection() {
             }
           `).join('')}
           
-          /* 当进入编辑模式时，在弹窗中彻底隐藏掉背景大字树里的那根老笔画，防止重叠双重影 */
           ${activeEditPathId ? `
             .modal-interactive-svg-viewport [id="${activeEditPathId}"] {
               display: none !important;
@@ -343,7 +361,7 @@ export function ApiDemoSection() {
       </div>
 
       {/* ==========================================================================
-         ✨ 矢量笔画微调弹窗（矩阵同步 + 局部图层解耦重组终极版）
+         ✨ 矢量笔画微调弹窗（高级悬浮自由缩放升级版）
          ========================================================================== */}
       {activeEditPathId && svgContent && (
         <div 
@@ -362,7 +380,7 @@ export function ApiDemoSection() {
             </div>
 
             <div className="modal-body-grid">
-              {/* 左侧：已彻底修复乱跳 Bug 的纯粹数据查看器 */}
+              {/* 左侧：双向联动数据列表 */}
               <div className="modal-coords-list">
                 <h5>节点绝对坐标监视表 (SVG Space)</h5>
                 <div className="coords-scroll-box">
@@ -370,7 +388,7 @@ export function ApiDemoSection() {
                     <div 
                       key={i} 
                       className={`coord-row-badge ${draggedPointIdx === i || hoveredPointIdx === i ? 'active' : ''}`}
-                      onMouseEnter={() => setHoveredPointIdx(i)} // 悬停仅触发表格行与右侧圆点的高亮联动
+                      onMouseEnter={() => setHoveredPointIdx(i)}
                       onMouseLeave={() => setHoveredPointIdx(null)}
                     >
                       <span className="node-idx">Node {i+1}</span>
@@ -381,57 +399,80 @@ export function ApiDemoSection() {
                 </div>
               </div>
 
-              {/* 右侧：长文本自适应、高保真无抖动微调视口 */}
+              {/* 右侧：集成悬浮设计控制台与现代 Grid 弹性滚动的高清画布区域 */}
               <div className="modal-canvas-column">
                 <div className="modal-canvas-frame">
-                  <div className="mi-zi-ge opacity-20"><div className="mi-zi-ge-h"/><div className="mi-zi-ge-v"/></div>
+                  
+                  {/* ✨ 新增：人性化悬浮设计缩放控制栏 */}
+                  <div className="modal-zoom-controls">
+                    <button 
+                      type="button" className="zoom-btn" title="缩小"
+                      onClick={() => setZoom(z => Math.max(100, z - 50))} disabled={zoom <= 100}
+                    >
+                      ➖
+                    </button>
+                    <span className="zoom-indicator">{zoom}%</span>
+                    <button 
+                      type="button" className="zoom-btn" title="放大"
+                      onClick={() => setZoom(z => Math.min(400, z + 50))} disabled={zoom >= 400}
+                    >
+                      ➕
+                    </button>
+                    <button type="button" className="zoom-btn reset" onClick={() => setZoom(100)}>🔄 重置</button>
+                  </div>
 
-                  <svg 
-                    ref={modalSvgRef}
-                    viewBox={modalSvgViewBox}
-                    className="modal-interactive-svg-viewport"
-                  >
-                    {/* 底层底层：纯静态文本骨架作为位置底图（只读，MouseMove 时绝不刷新，CORS/CTM 极其稳定） */}
-                    <g dangerouslySetInnerHTML={{ __html: svgContent.match(/<svg[^>]*>([\s\S]*?)<\/svg>/)?.[1] || '' }} />
+                  {/* 现代 CSS Grid 容器：利用 placeItems 完美避开 Flex 溢出剪裁的终极缩放布局 */}
+                  <div className="modal-scroll-container">
+                    <div className="mi-zi-ge opacity-20"><div className="mi-zi-ge-h"/><div className="mi-zi-ge-v"/></div>
+                    
+                    <svg 
+                      ref={modalSvgRef}
+                      viewBox={modalSvgViewBox}
+                      className="modal-interactive-svg-viewport"
+                      style={{ 
+                        // 将 zoom 比例映射为百分比尺寸，驱动路径无限高清自适应伸展
+                        width: `${95 * (zoom / 100)}%`, 
+                        height: `${95 * (zoom / 100)}%`,
+                        transition: 'width 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), height 0.18s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                        flexShrink: 0
+                      }}
+                    >
+                      {/* 底层：静态汉字参考背景 */}
+                      <g dangerouslySetInnerHTML={{ __html: svgContent.match(/<svg[^>]*>([\s\S]*?)<\/svg>/)?.[1] || '' }} />
 
-                    {/* 顶层顶层：【关键升级】将活动路径及手柄，包裹进与原汉字完全共享的平移空间上下文 */}
-                    <g ref={localGroupRef} transform={mirrorTransform}>
-                      
-                      {/* 实时的响应式活动路径图层 */}
-                      <path 
-                        d={currentLiveD} 
-                        fill={mirrorAttributes.fill} 
-                        stroke={mirrorAttributes.stroke} 
-                        strokeWidth={mirrorAttributes.strokeWidth}
-                        style={{ opacity: 1 }}
-                      />
-
-                      {/* 辅助曲率骨骼线 */}
-                      <polyline
-                        points={controlPoints.map(p => `${p.x},${p.y}`).join(' ')}
-                        fill="none" stroke="#ff007f" strokeWidth="2" strokeDasharray="4,4" style={{ opacity: 0.65 }}
-                      />
-
-                      {/* 交互圆点 */}
-                      {controlPoints.map((pt, idx) => (
-                        <circle
-                          key={idx}
-                          cx={pt.x}
-                          cy={pt.y}
-                          r={draggedPointIdx === idx ? "15" : hoveredPointIdx === idx ? "12" : "7"}
-                          fill={draggedPointIdx === idx ? "#ff007f" : hoveredPointIdx === idx ? "#764ba2" : "#ffffff"}
-                          stroke={draggedPointIdx === idx ? "#ffffff" : "#764ba2"}
-                          strokeWidth="2"
-                          style={{ cursor: 'move', transition: 'r 0.1s, fill 0.1s' }}
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setDraggedPointIdx(idx); // 此处按下鼠标，才是合法唯一的拖拽锁
-                          }}
+                      {/* 顶层：与背景字完全对齐的 transform 相对空间活动镜像图层 */}
+                      <g ref={localGroupRef} transform={mirrorTransform}>
+                        <path 
+                          d={currentLiveD} 
+                          fill={mirrorAttributes.fill} 
+                          stroke={mirrorAttributes.stroke} 
+                          strokeWidth={mirrorAttributes.strokeWidth}
                         />
-                      ))}
-                    </g>
-                  </svg>
+                        <polyline
+                          points={controlPoints.map(p => `${p.x},${p.y}`).join(' ')}
+                          fill="none" stroke="#ff007f" strokeWidth="2" strokeDasharray="4,4" style={{ opacity: 0.65 }}
+                        />
+                        {controlPoints.map((pt, idx) => (
+                          <circle
+                            key={idx}
+                            cx={pt.x}
+                            cy={pt.y}
+                            r={draggedPointIdx === idx ? "15" : hoveredPointIdx === idx ? "12" : "7"}
+                            fill={draggedPointIdx === idx ? "#ff007f" : hoveredPointIdx === idx ? "#764ba2" : "#ffffff"}
+                            stroke={draggedPointIdx === idx ? "#ffffff" : "#764ba2"}
+                            strokeWidth="2"
+                            style={{ cursor: 'move', transition: 'r 0.1s, fill 0.1s' }}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setDraggedPointIdx(idx);
+                            }}
+                          />
+                        ))}
+                      </g>
+                    </svg>
+                  </div>
+
                 </div>
               </div>
 
