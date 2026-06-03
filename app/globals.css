@@ -1134,10 +1134,39 @@ body {
 }
 
 /* ==========================================================================
-   🛠️ LVGM 自由缩放微调面板专属样式（全面优化滚动与悬浮控制台）
+   🛠️ LVGM 交互式微调系统高级自适应控制中心 (无剪裁滚动 + 多功能操作栏)
    ========================================================================== */
 
-/* 核心视口外框：改为强制裁剪溢出，由内部滚动层处理滚动条 */
+/* 弹窗顶栏辅助功能小按钮组 */
+.modal-aux-btn {
+  padding: 8px 14px;
+  background: #f1f5f9;
+  color: #475569;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid #cbd5e1;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.modal-aux-btn:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+.modal-aux-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.modal-aux-btn.cancel {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+.modal-aux-btn.cancel:hover {
+  background: #fee2e2;
+}
+
+/* 核心大画布包裹层（强控超出裁剪） */
 .modal-canvas-frame {
   position: relative;
   width: 100%;
@@ -1145,41 +1174,46 @@ body {
   background: #ffffff;
   border: 1px solid #cbd5e1;
   border-radius: 12px;
-  overflow: hidden; /* 由内部 scroll-container 接管 */
+  overflow: hidden; 
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* ✨ 全新新增：现代 Grid 独立平铺中央滚动沙箱 */
+/* ✨ 【终极修复】采用物理 Flex 模型，利用 margin: auto 自适应正向滚动边界，永不裁剪长文本首尾 */
 .modal-scroll-container {
   width: 100%;
   height: 100%;
-  overflow: auto; /* 允许缩放后自由滚动 */
-  display: grid;
-  place-items: center; /* 使用 Grid 完美规避 Flex 溢出时破坏 left/top 顶端的问题 */
-  padding: 32px;
+  overflow: auto; /* 允许无限平铺滚动 */
+  padding: 40px;
+  display: flex;
+  background: #ffffff;
 }
 
-/* ✨ 全新新增：仿 Figma 专业设计器悬浮缩放控制栏 */
+/* 强制让大模型返回的任何长宽比多字 SVG 在缩放时都不发生容器断层 */
+.modal-interactive-svg-viewport {
+  margin: auto; /* 核心：完美解决小于视口时居中，大于视口时正确计算正向滚动轴的顶级 CSS 逻辑 */
+  flex-shrink: 0;
+  overflow: visible !important;
+}
+
+/* 仿 Figma 悬浮面板 */
 .modal-zoom-controls {
   position: absolute;
   top: 14px;
   right: 14px;
-  z-index: 50; /* 确保压在骨骼圆点之上 */
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(8px) saturate(120%);
-  border: 1px solid #e2e8f0;
+  z-index: 500; 
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(8px);
+  border: 1px solid #cbd5e1;
   border-radius: 10px;
   padding: 4px 6px;
   display: flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.08);
-  user-select: none;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
 }
 
-/* 缩放功能小按键 */
 .zoom-btn {
   width: 26px;
   height: 26px;
@@ -1192,38 +1226,27 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s;
 }
 .zoom-btn:hover:not(:disabled) {
   border-color: #764ba2;
   color: #764ba2;
   background: #f8fafc;
-  transform: translateY(-0.5px);
-}
-.zoom-btn:active:not(:disabled) {
-  transform: scale(0.96);
-}
-.zoom-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-  background: #f1f5f9;
 }
 .zoom-btn.reset {
   width: auto;
   padding: 0 8px;
   font-size: 11px;
   font-weight: 600;
-  color: #475569;
 }
 
-/* 缩放数值百分比指示标签 */
 .zoom-indicator {
   font-size: 12px;
   font-weight: 700;
   color: #1e293b;
   min-width: 44px;
   text-align: center;
-  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-family: 'SF Mono', Monaco, monospace;
 }
 
 /* 彻底放开视口裁剪限制 */
