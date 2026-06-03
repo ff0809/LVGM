@@ -25,9 +25,10 @@ export function ApiDemoSection() {
   const [draggedPointIdx, setDraggedPointIdx] = useState<number | null>(null);
   const [hoveredPointIdx, setHoveredPointIdx] = useState<number | null>(null); 
   const [modalSvgViewBox, setModalSvgViewBox] = useState<string>("0 0 1024 1200");
-  
-  // --- 新增：人性化画布自由缩放比例状态 (100% - 400%) ---
   const [zoom, setZoom] = useState<number>(100);
+
+  // --- ✨ 新增功能：撤销机制历史快照状态栈 ---
+  const [undoStack, setUndoStack] = useState<{ x: number; y: number; xIdx: number; yIdx: number }[][]>([]);
 
   // 用于克隆镜像笔画的原始样式样式
   const [mirrorTransform, setMirrorTransform] = useState<string>('');
@@ -97,8 +98,9 @@ export function ApiDemoSection() {
       setMirrorAttributes({ fill, stroke, strokeWidth });
       setModalSvgViewBox(viewBox);
       setActiveEditPathId(pathId);
-      setZoom(100); // 每次打开新笔画默认初始化为 100% 原始大小
-      
+      setZoom(100); 
+      setUndoStack([]); // 每次打开重置撤销栈
+
       // 精准解构分词
       const tokens = dAttr.split(/(-?\d+(?:\.\d+)?)/);
       const points: typeof controlPoints = [];
@@ -130,7 +132,7 @@ export function ApiDemoSection() {
     return newTokens.join('');
   };
 
-  // 由独立微调图层承载的高灵敏全局鼠标拖拽响应器 (完美适配缩放与滚动)
+  // 【核心高帧率优化】鼠标拖拽响应器 —— 期间仅修改轻量数据，绝不调用 DOMParser，彻底消灭报错与卡顿
   const handleGlobalMouseMove = (e: React.MouseEvent) => {
     if (draggedPointIdx === null || !modalSvgRef.current || !localGroupRef.current) return;
 
@@ -141,7 +143,6 @@ export function ApiDemoSection() {
     svgPoint.x = e.clientX;
     svgPoint.y = e.clientY;
 
-    // getScreenCTM 能够全自动捕获前端由于 Zoom 放大、容器 Scroll 滚动产生的全部物理位移偏量
     const ctm = groupEl.getScreenCTM();
     if (!ctm) return;
 
@@ -153,30 +154,27 @@ export function ApiDemoSection() {
     setControlPoints((prevPoints) => {
       const nextPoints = [...prevPoints];
       nextPoints[draggedPointIdx] = { ...nextPoints[draggedPointIdx], x: svgX, y: svgY };
-
-      const newTokens = [...pathTokens];
-      nextPoints.forEach((p) => {
-        newTokens[p.xIdx] = p.x.toString();
-        newTokens[p.yIdx] = p.y.toString();
-      });
-      const newD = newTokens.join('');
-
-      setSvgContent((prevSvg) => {
-        if (!prevSvg) return null;
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(prevSvg, 'image/xml+xml');
-        const path = doc.getElementById(activeEditPathId);
-        if (path) {
-          path.setAttribute('d', newD);
-          return new XMLSerializer().serializeToString(doc);
-        }
-        return prevSvg;
-      });
-
       return nextPoints;
     });
   };
 
+  // --- ✨ 新增功能：处理回退一步逻辑 ---
+  const handleUndo = () => {
+    if (undoStack.length === 0) return;
+    const previousPoints = undoStack[undoStack.length - 1];
+    setControlPoints(previousPoints);
+    setUndoStack(prev => prev.slice(0, -1)); // 弹出栈顶
+  };
+
+  // --- ✨ 新增功能：彻底放弃本次修改，原数据毫发无损关闭 ---
+  const handleCancelAndClose = () => {
+    setActiveEditPathId(null);
+    setDraggedPointIdx(null);
+    setUndoStack([]);
+    setZoom(100);
+  };
+
+  // 【稳固持久化保存】点击保存时，才使用规范的 image/svg+xml 一次性写回主图层数据源
   const handleSaveAndClose = () => {
     if (!activeEditPathId || !svgContent) {
       setActiveEditPathId(null);
@@ -184,7 +182,7 @@ export function ApiDemoSection() {
     }
     const finalD = buildDString(controlPoints, pathTokens);
     const parser = new DOMParser();
-    const doc = parser.parseFromString(svgContent, 'image/svg+xml');
+    const doc = parser.parseFromString(svgContent, 'image/svg+xml'); // 修正为合法的标准 enum 枚举值
     const path = doc.getElementById(activeEditPathId);
     if (path) {
       path.setAttribute('d', finalD);
@@ -192,7 +190,8 @@ export function ApiDemoSection() {
     }
     setActiveEditPathId(null);
     setDraggedPointIdx(null);
-    setZoom(100); // 显式归位
+    setUndoStack([]);
+    setZoom(100); 
   };
 
   const handleGenerate = async () => {
@@ -361,7 +360,7 @@ export function ApiDemoSection() {
       </div>
 
       {/* ==========================================================================
-         ✨ 矢量笔画微调弹窗（高级悬浮自由缩放升级版）
+         ✨ 矢量笔画微调弹窗（全球矩阵投影 + 历史回退重构完美版）
          ========================================================================== */}
       {activeEditPathId && svgContent && (
         <div 
@@ -376,11 +375,22 @@ export function ApiDemoSection() {
                 <h4>✍️ 矢量笔画控制点微调面板</h4>
                 <p>当前选中笔画节点数：<strong>{controlPoints.length} 个</strong>。按住并拖拽高亮圆点可实时修正字形瑕疵。</p>
               </div>
-              <button className="modal-close-btn" onClick={handleSaveAndClose}>✕ 关闭并应用修改</button>
+              <div style={{ display: 'flex', gap: 10 }}>
+                {/* ✨ 新增：人性化多功能辅助键操作栏 */}
+                <button type="button" className="modal-aux-btn" onClick={handleUndo} disabled={undoStack.length === 0}>
+                  ↩️ 撤销上一步 ({undoStack.length})
+                </button>
+                <button type="button" className="modal-aux-btn cancel" onClick={handleCancelAndClose}>
+                  🚫 放弃修改并关闭
+                </button>
+                <button type="button" className="modal-close-btn" onClick={handleSaveAndClose}>
+                  💾 应用并保存修改
+                </button>
+              </div>
             </div>
 
             <div className="modal-body-grid">
-              {/* 左侧：双向联动数据列表 */}
+              {/* 左侧：双向联动数据监控列表 */}
               <div className="modal-coords-list">
                 <h5>节点绝对坐标监视表 (SVG Space)</h5>
                 <div className="coords-scroll-box">
@@ -399,11 +409,11 @@ export function ApiDemoSection() {
                 </div>
               </div>
 
-              {/* 右侧：集成悬浮设计控制台与现代 Grid 弹性滚动的高清画布区域 */}
+              {/* 右侧：集成悬浮设计控制台与现代 Flex 漫游防裁剪画布区 */}
               <div className="modal-canvas-column">
                 <div className="modal-canvas-frame">
                   
-                  {/* ✨ 新增：人性化悬浮设计缩放控制栏 */}
+                  {/* Figma 风格悬浮设计缩放控制栏 */}
                   <div className="modal-zoom-controls">
                     <button 
                       type="button" className="zoom-btn" title="缩小"
@@ -421,7 +431,7 @@ export function ApiDemoSection() {
                     <button type="button" className="zoom-btn reset" onClick={() => setZoom(100)}>🔄 重置</button>
                   </div>
 
-                  {/* 现代 CSS Grid 容器：利用 placeItems 完美避开 Flex 溢出剪裁的终极缩放布局 */}
+                  {/* 核心升级修复：采用物理 Flex 模型自适应滚动边界，彻底杜绝放长文本大字被切头去尾的 Bug */}
                   <div className="modal-scroll-container">
                     <div className="mi-zi-ge opacity-20"><div className="mi-zi-ge-h"/><div className="mi-zi-ge-v"/></div>
                     
@@ -430,11 +440,9 @@ export function ApiDemoSection() {
                       viewBox={modalSvgViewBox}
                       className="modal-interactive-svg-viewport"
                       style={{ 
-                        // 将 zoom 比例映射为百分比尺寸，驱动路径无限高清自适应伸展
-                        width: `${95 * (zoom / 100)}%`, 
-                        height: `${95 * (zoom / 100)}%`,
-                        transition: 'width 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), height 0.18s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                        flexShrink: 0
+                        width: `${90 * (zoom / 100)}%`, 
+                        height: `${90 * (zoom / 100)}%`,
+                        transition: 'width 0.15s ease-out, height 0.15s ease-out',
                       }}
                     >
                       {/* 底层：静态汉字参考背景 */}
@@ -465,6 +473,8 @@ export function ApiDemoSection() {
                             onMouseDown={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
+                              // 按下圆点瞬间，深度拷贝一份当前数据状态压入撤销历史栈
+                              setUndoStack(prev => [...prev, controlPoints.map(p => ({ ...p }))]);
                               setDraggedPointIdx(idx);
                             }}
                           />
