@@ -1137,7 +1137,7 @@ body {
    🛠️ LVGM 交互式微调系统高级自适应控制中心 (无剪裁滚动 + 多功能操作栏)
    ========================================================================== */
 
-/* 弹窗顶栏辅助功能小按钮组 */
+/* 弹窗顶栏新增：辅助功能控制小按钮 */
 .modal-aux-btn {
   padding: 8px 14px;
   background: #f1f5f9;
@@ -1157,6 +1157,7 @@ body {
   opacity: 0.4;
   cursor: not-allowed;
 }
+/* 危险拒绝按钮独立多巴胺配色 */
 .modal-aux-btn.cancel {
   background: #fef2f2;
   color: #dc2626;
@@ -1166,7 +1167,7 @@ body {
   background: #fee2e2;
 }
 
-/* 核心大画布包裹层（强控超出裁剪） */
+/* 核心大画布外框容器 */
 .modal-canvas-frame {
   position: relative;
   width: 100%;
@@ -1180,24 +1181,24 @@ body {
   justify-content: center;
 }
 
-/* ✨ 【终极修复】采用物理 Flex 模型，利用 margin: auto 自适应正向滚动边界，永不裁剪长文本首尾 */
+/* ✨ 【终极修复】采用物理 Flex 模型，利用 margin: auto 自适应正向滚动边界，永不裁剪横向多字长文本 */
 .modal-scroll-container {
   width: 100%;
   height: 100%;
-  overflow: auto; /* 允许无限平铺滚动 */
+  overflow: auto; /* 允许无限延展滚动 */
   padding: 40px;
   display: flex;
   background: #ffffff;
 }
 
-/* 强制让大模型返回的任何长宽比多字 SVG 在缩放时都不发生容器断层 */
+/* 强制使内嵌 SVG 视口在缩放时保持原点同步 */
 .modal-interactive-svg-viewport {
-  margin: auto; /* 核心：完美解决小于视口时居中，大于视口时正确计算正向滚动轴的顶级 CSS 逻辑 */
+  margin: auto; /* 核心：完美解决小于视口时居中，放大超出后自然支持滚动轴的顶级 CSS 排版 */
   flex-shrink: 0;
   overflow: visible !important;
 }
 
-/* 仿 Figma 悬浮面板 */
+/* 悬浮专业调色台 */
 .modal-zoom-controls {
   position: absolute;
   top: 14px;
@@ -1246,7 +1247,7 @@ body {
   color: #1e293b;
   min-width: 44px;
   text-align: center;
-  font-family: 'SF Mono', Monaco, monospace;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
 }
 
 /* 彻底放开视口裁剪限制 */
