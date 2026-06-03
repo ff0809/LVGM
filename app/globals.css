@@ -1014,29 +1014,30 @@ body {
 }
 
 /* ==========================================================================
-   🛠️ LVGM 交互式微调系统专属高端样式（弹窗、多点折线、高精度同步）
+   🛠️ LVGM 交互式微调系统专属高端样式（全新高度流适配与全球追踪版）
    ========================================================================== */
 
-/* 弹窗半透明黑底遮罩 */
+/* 弹窗遮罩 */
 .stroke-edit-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 999;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(8px);
+  z-index: 9999; /* 提至最高层级 */
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
-  animation: modalFadeIn 0.2s ease-out;
+  padding: 24px;
+  animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* 模块化编辑面板大卡片 */
 .stroke-edit-modal-card {
   background: #ffffff;
   width: 100%;
-  max-width: 1000px;
-  border-radius: 20px;
+  max-width: 1050px;
+  max-height: 85vh; /* 强控视口高度不超过屏幕的 85% */
+  border-radius: 16px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   border: 1px solid #e2e8f0;
   overflow: hidden;
@@ -1045,20 +1046,21 @@ body {
 }
 
 .modal-header {
-  padding: 20px 28px;
+  padding: 18px 24px;
   border-bottom: 1px solid #f1f5f9;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #fafbfe;
+  background: #f8fafc;
+  flex-shrink: 0; /* 头部严禁缩水 */
 }
-.modal-header h4 { font-size: 16px; font-weight: 700; color: #1e293b; margin: 0; }
+.modal-header h4 { font-size: 16px; font-weight: 700; color: #0f172a; margin: 0; }
 .modal-header p { font-size: 12px; color: #64748b; margin: 4px 0 0 0; }
 
 .modal-close-btn {
   padding: 8px 16px;
   background: #764ba2;
-  color: #fff;
+  color: #ffffff;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
@@ -1068,24 +1070,36 @@ body {
 }
 .modal-close-btn:hover { background: #5b3585; }
 
-/* 弹窗内容左右分栏架构 */
+/* 弹窗主体分栏：改用百分比自适应 */
 .modal-body-grid {
   display: grid;
   grid-template-columns: 320px 1fr;
-  height: 520px;
+  flex: 1;
+  min-height: 0; /* 核心：开启现代 CSS Grid/Flex 内部自适应滚动的必加属性 */
   background: #ffffff;
 }
 
-/* 左侧坐标控制栏 */
+/* 左侧坐标列表 */
 .modal-coords-list {
-  padding: 24px;
+  padding: 20px;
   border-right: 1px solid #f1f5f9;
   display: flex;
   flex-direction: column;
   background: #f8fafc;
+  height: 100%;
+  min-height: 0;
 }
-.modal-coords-list h5 { font-size: 12px; font-weight: 700; color: #475569; margin: 0 0 12px 0; text-transform: uppercase; }
-.coords-scroll-box { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; }
+.modal-coords-list h5 { font-size: 12px; font-weight: 700; color: #475569; margin: 0 0 12px 0; }
+
+/* 【完美修复】开启强力 Flex 压缩滚动的独立容器 */
+.coords-scroll-box {
+  flex: 1;
+  overflow-y: auto; /* 溢出自动纵向滚动 */
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 4px;
+}
 
 /* 单行坐标名牌 */
 .coord-row-badge {
@@ -1096,7 +1110,7 @@ body {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-family: 'SF Mono', Monaco, monospace;
   transition: all 0.15s;
 }
@@ -1115,45 +1129,45 @@ body {
   align-items: center;
   justify-content: center;
   background: #ffffff;
+  height: 100%;
+  min-height: 0;
 }
+
+/* 【完美修复】允许自适应横向长文本大字的外框，解除宽高死硬限制 */
 .modal-canvas-frame {
   position: relative;
   width: 100%;
   height: 100%;
-  max-width: 470px;
-  max-height: 470px;
+  background: #ffffff;
   border: 1px solid #cbd5e1;
   border-radius: 12px;
-  background: #ffffff;
-  box-shadow: inset 0 2px 10px rgba(0,0,0,0.02);
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.02);
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: hidden; /* 防止辅助线爆框 */
 }
 
-/* 核心视口：继承大尺寸并等比缩放 */
+/* 核心视口：允许大模型长文本 SVG 完全溢出可见，靠上级 frame 居中适配 */
 .modal-interactive-svg-viewport {
-  width: 100%;
-  height: 100%;
-  padding: 20px;
-  z-index: 2;
-  overflow: visible;
+  width: 95%;
+  height: 95%;
+  overflow: visible !important; /* 彻底解除 clipping 裁剪限制，大字再也不会被砍头切脚 */
 }
 
-/* 【关键隔离机制】在弹窗内部，把所有没有被选中的其他笔画柔和虚化 15% */
+/* 弹窗内非活动笔画半透明淡出 */
 .modal-interactive-svg-viewport g path {
   opacity: 0.12 !important;
   stroke-width: 1.5px !important;
   fill: #94a3b8 !important;
   transition: all 0.2s;
-  pointer-events: none !important; /* 彻底禁用底层高亮干扰 */
+  pointer-events: none !important;
 }
 
-/* 唯独当前正在被微调的 path 保持鲜艳和描边高亮 */
+/* 正在被微调的活动笔画保持鲜艳 */
 .modal-interactive-svg-viewport g path[id^="lvgm-stroke"] {
   opacity: 1 !important;
-  fill: rgba(37, 99, 235, 0.08) !important;
+  fill: rgba(37, 99, 235, 0.06) !important;
   stroke: #2563eb !important;
   stroke-width: 5px !important;
 }
