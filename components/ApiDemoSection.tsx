@@ -23,10 +23,17 @@ export function ApiDemoSection() {
   const [pathTokens, setPathTokens] = useState<string[]>([]);
   const [controlPoints, setControlPoints] = useState<{ x: number; y: number; xIdx: number; yIdx: number }[]>([]);
   const [draggedPointIdx, setDraggedPointIdx] = useState<number | null>(null);
-  const [hoveredPointIdx, setHoveredPointIdx] = useState<number | null>(null); // 新增：纯悬停高亮索引
+  const [hoveredPointIdx, setHoveredPointIdx] = useState<number | null>(null); 
   const [modalSvgViewBox, setModalSvgViewBox] = useState<string>("0 0 1024 1200");
   
+  // 用于克隆镜像笔画的原始样式样式
+  const [mirrorTransform, setMirrorTransform] = useState<string>('');
+  const [mirrorAttributes, setMirrorAttributes] = useState<{ fill: string; stroke: string; strokeWidth: string }>({
+    fill: 'none', stroke: '#2563eb', strokeWidth: '4'
+  });
+
   const modalSvgRef = useRef<SVGSVGElement>(null);
+  const localGroupRef = useRef<SVGGElement>(null); // 精准定位空间原点的核心句柄
 
   // 智能笔画预设
   const applyPreset = (type: 'all' | 'all-but-last' | 'only-first') => {
@@ -78,6 +85,14 @@ export function ApiDemoSection() {
       const svgEl = targetPath.closest('svg');
       const viewBox = svgEl?.getAttribute('viewBox') || "0 0 1024 1200";
       
+      // 【关键修复】提取父级字符组的 transform 属性（横向平移 translate 数据）
+      const parentTransform = targetPath.parentElement?.getAttribute('transform') || '';
+      const fill = targetPath.getAttribute('fill') || 'none';
+      const stroke = targetPath.getAttribute('stroke') || 'none';
+      const strokeWidth = targetPath.getAttribute('stroke-width') || '4';
+
+      setMirrorTransform(parentTransform);
+      setMirrorAttributes({ fill, stroke, strokeWidth });
       setModalSvgViewBox(viewBox);
       setActiveEditPathId(pathId);
       
@@ -102,58 +117,65 @@ export function ApiDemoSection() {
     }
   };
 
-  // 【核心修复：全球矩阵投影算法】解决多字 transform 造成的笔画飞走错位 Bug
+  // 工具函数：根据控制点状态组装最新的路径字符串
+  const buildDString = (points: typeof controlPoints, tokens: string[]) => {
+    const newTokens = [...tokens];
+    points.forEach((p) => {
+      newTokens[p.xIdx] = p.x.toString();
+      newTokens[p.yIdx] = p.y.toString();
+    });
+    return newTokens.join('');
+  };
+
+  // 【核心升级修复】由独立微调图层承载的高灵敏全局鼠标拖拽响应器
   const handleGlobalMouseMove = (e: React.MouseEvent) => {
-    if (draggedPointIdx === null || !modalSvgRef.current || !svgContent || !activeEditPathId) return;
+    if (draggedPointIdx === null || !modalSvgRef.current || !localGroupRef.current) return;
 
     const svgEl = modalSvgRef.current;
-    // 准确定位弹窗内部渲染的那根活动 Path 节点
-    const targetPathInModal = svgEl.querySelector(`[id="${activeEditPathId}"]`);
-    if (!targetPathInModal) return;
+    const groupEl = localGroupRef.current;
 
-    // 1. 创建 SVG 标定点
+    // 1. 创建原生的 SVG 交互矩阵标定点
     const svgPoint = svgEl.createSVGPoint();
     svgPoint.x = e.clientX;
     svgPoint.y = e.clientY;
 
-    // 2. 获取该笔画所依附的父级元素（即带有 translate 偏移的字符组 <g>）的屏幕坐标变换矩阵 (CTM)
-    const parentElement = targetPathInModal.parentElement || svgEl;
-    const ctm = parentElement.getScreenCTM();
+    // 2. 获取当前克隆图层的屏幕坐标变换矩阵
+    const ctm = groupEl.getScreenCTM();
     if (!ctm) return;
 
-    // 3. 执行矩阵逆变换：将屏幕绝对像素无损转换回当前汉字的【局部相对坐标系空间】
+    // 3. 执行逆矩阵映射：精准换算到与原笔画完完全全等价的局部空间坐标系，完美治愈错位飞走
     const localPoint = svgPoint.matrixTransform(ctm.inverse());
     
     const svgX = Math.round(localPoint.x);
     const svgY = Math.round(localPoint.y);
 
-    // 4. 函数式实时形变响应与重构序列化，彻底杜绝数据丢失
+    // 4. 只实时更新轻量级的 React 状态线，绝不触碰和重构底层大的 background HTML 字符串
     setControlPoints((prevPoints) => {
       const nextPoints = [...prevPoints];
       nextPoints[draggedPointIdx] = { ...nextPoints[draggedPointIdx], x: svgX, y: svgY };
-
-      const newTokens = [...pathTokens];
-      nextPoints.forEach((p) => {
-        newTokens[p.xIdx] = p.x.toString();
-        newTokens[p.yIdx] = p.y.toString();
-      });
-      const newD = newTokens.join('');
-
-      // 同步更新顶层核心数据源
-      setSvgContent((prevSvg) => {
-        if (!prevSvg) return null;
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(prevSvg, 'image/xml+xml');
-        const path = doc.getElementById(activeEditPathId);
-        if (path) {
-          path.setAttribute('d', newD);
-          return new XMLSerializer().serializeToString(doc);
-        }
-        return prevSvg;
-      });
-
       return nextPoints;
     });
+  };
+
+  // 【持久化保存核心】在点击关闭时，才一次性完成总数据反向序列化写回主界面
+  const handleSaveAndClose = () => {
+    if (!activeEditPathId || !svgContent) {
+      setActiveEditPathId(null);
+      return;
+    }
+
+    const finalD = buildDString(controlPoints, pathTokens);
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgContent, 'image/svg+xml');
+    const path = doc.getElementById(activeEditPathId);
+    
+    if (path) {
+      path.setAttribute('d', finalD);
+      // 永久持久化保存
+      setSvgContent(new XMLSerializer().serializeToString(doc));
+    }
+    setActiveEditPathId(null);
+    setDraggedPointIdx(null);
   };
 
   const handleGenerate = async () => {
@@ -218,6 +240,9 @@ export function ApiDemoSection() {
     }
   };
 
+  // 计算弹窗中当前独立图层上实时形变的路径 d 数据
+  const currentLiveD = activeEditPathId ? buildDString(controlPoints, pathTokens) : '';
+
   return (
     <section id="demo" className="content-section">
       {svgContent && (
@@ -233,6 +258,13 @@ export function ApiDemoSection() {
               pointer-events: auto !important;
             }
           `).join('')}
+          
+          /* 当进入编辑模式时，在弹窗中彻底隐藏掉背景大字树里的那根老笔画，防止重叠双重影 */
+          ${activeEditPathId ? `
+            .modal-interactive-svg-viewport [id="${activeEditPathId}"] {
+              display: none !important;
+            }
+          ` : ''}
         `}</style>
       )}
 
@@ -311,7 +343,7 @@ export function ApiDemoSection() {
       </div>
 
       {/* ==========================================================================
-         ✨ 矢量笔画微调弹窗（全球追踪 + 局部逆矩阵对齐完美版）
+         ✨ 矢量笔画微调弹窗（矩阵同步 + 局部图层解耦重组终极版）
          ========================================================================== */}
       {activeEditPathId && svgContent && (
         <div 
@@ -326,11 +358,11 @@ export function ApiDemoSection() {
                 <h4>✍️ 矢量笔画控制点微调面板</h4>
                 <p>当前选中笔画节点数：<strong>{controlPoints.length} 个</strong>。按住并拖拽高亮圆点可实时修正字形瑕疵。</p>
               </div>
-              <button className="modal-close-btn" onClick={() => setActiveEditPathId(null)}>✕ 关闭并应用修改</button>
+              <button className="modal-close-btn" onClick={handleSaveAndClose}>✕ 关闭并应用修改</button>
             </div>
 
             <div className="modal-body-grid">
-              {/* 左侧：双向高亮数据列表（已修复乱跳 Bug） */}
+              {/* 左侧：已彻底修复乱跳 Bug 的纯粹数据查看器 */}
               <div className="modal-coords-list">
                 <h5>节点绝对坐标监视表 (SVG Space)</h5>
                 <div className="coords-scroll-box">
@@ -338,7 +370,7 @@ export function ApiDemoSection() {
                     <div 
                       key={i} 
                       className={`coord-row-badge ${draggedPointIdx === i || hoveredPointIdx === i ? 'active' : ''}`}
-                      onMouseEnter={() => setHoveredPointIdx(i)} // 悬停仅作两边缘亮指示
+                      onMouseEnter={() => setHoveredPointIdx(i)} // 悬停仅触发表格行与右侧圆点的高亮联动
                       onMouseLeave={() => setHoveredPointIdx(null)}
                     >
                       <span className="node-idx">Node {i+1}</span>
@@ -349,7 +381,7 @@ export function ApiDemoSection() {
                 </div>
               </div>
 
-              {/* 右侧：纵向高弹性伸缩、长文本自适应不裁剪视口 */}
+              {/* 右侧：长文本自适应、高保真无抖动微调视口 */}
               <div className="modal-canvas-column">
                 <div className="modal-canvas-frame">
                   <div className="mi-zi-ge opacity-20"><div className="mi-zi-ge-h"/><div className="mi-zi-ge-v"/></div>
@@ -359,21 +391,33 @@ export function ApiDemoSection() {
                     viewBox={modalSvgViewBox}
                     className="modal-interactive-svg-viewport"
                   >
-                    {/* 底层：原封不动渲染整组汉字作为绝对参考骨架 */}
+                    {/* 底层底层：纯静态文本骨架作为位置底图（只读，MouseMove 时绝不刷新，CORS/CTM 极其稳定） */}
                     <g dangerouslySetInnerHTML={{ __html: svgContent.match(/<svg[^>]*>([\s\S]*?)<\/svg>/)?.[1] || '' }} />
 
-                    {/* 顶层：直接覆盖绘制活动骨骼及控制点句柄 */}
-                    <g>
+                    {/* 顶层顶层：【关键升级】将活动路径及手柄，包裹进与原汉字完全共享的平移空间上下文 */}
+                    <g ref={localGroupRef} transform={mirrorTransform}>
+                      
+                      {/* 实时的响应式活动路径图层 */}
+                      <path 
+                        d={currentLiveD} 
+                        fill={mirrorAttributes.fill} 
+                        stroke={mirrorAttributes.stroke} 
+                        strokeWidth={mirrorAttributes.strokeWidth}
+                        style={{ opacity: 1 }}
+                      />
+
+                      {/* 辅助曲率骨骼线 */}
                       <polyline
                         points={controlPoints.map(p => `${p.x},${p.y}`).join(' ')}
                         fill="none" stroke="#ff007f" strokeWidth="2" strokeDasharray="4,4" style={{ opacity: 0.65 }}
                       />
+
+                      {/* 交互圆点 */}
                       {controlPoints.map((pt, idx) => (
                         <circle
                           key={idx}
                           cx={pt.x}
                           cy={pt.y}
-                          // 如果正在被拖动或在左侧列表处于悬停状态，圆点会动态放大，交互感拉满
                           r={draggedPointIdx === idx ? "15" : hoveredPointIdx === idx ? "12" : "7"}
                           fill={draggedPointIdx === idx ? "#ff007f" : hoveredPointIdx === idx ? "#764ba2" : "#ffffff"}
                           stroke={draggedPointIdx === idx ? "#ffffff" : "#764ba2"}
@@ -382,7 +426,7 @@ export function ApiDemoSection() {
                           onMouseDown={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            setDraggedPointIdx(idx); // 只有在这里按下鼠标，才是真正的拖拽开始
+                            setDraggedPointIdx(idx); // 此处按下鼠标，才是合法唯一的拖拽锁
                           }}
                         />
                       ))}
