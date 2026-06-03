@@ -1133,6 +1133,11 @@ body {
   min-height: 0;
 }
 
+/* ==========================================================================
+   🛠️ LVGM 自由缩放微调面板专属样式（全面优化滚动与悬浮控制台）
+   ========================================================================== */
+
+/* 核心视口外框：改为强制裁剪溢出，由内部滚动层处理滚动条 */
 .modal-canvas-frame {
   position: relative;
   width: 100%;
@@ -1140,17 +1145,90 @@ body {
   background: #ffffff;
   border: 1px solid #cbd5e1;
   border-radius: 12px;
+  overflow: hidden; /* 由内部 scroll-container 接管 */
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden; 
 }
 
-/* 核心修复：多字横向长文本大字完美可见，解除裁剪 */
+/* ✨ 全新新增：现代 Grid 独立平铺中央滚动沙箱 */
+.modal-scroll-container {
+  width: 100%;
+  height: 100%;
+  overflow: auto; /* 允许缩放后自由滚动 */
+  display: grid;
+  place-items: center; /* 使用 Grid 完美规避 Flex 溢出时破坏 left/top 顶端的问题 */
+  padding: 32px;
+}
+
+/* ✨ 全新新增：仿 Figma 专业设计器悬浮缩放控制栏 */
+.modal-zoom-controls {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 50; /* 确保压在骨骼圆点之上 */
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px) saturate(120%);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.08);
+  user-select: none;
+}
+
+/* 缩放功能小按键 */
+.zoom-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.zoom-btn:hover:not(:disabled) {
+  border-color: #764ba2;
+  color: #764ba2;
+  background: #f8fafc;
+  transform: translateY(-0.5px);
+}
+.zoom-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+.zoom-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background: #f1f5f9;
+}
+.zoom-btn.reset {
+  width: auto;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+}
+
+/* 缩放数值百分比指示标签 */
+.zoom-indicator {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e293b;
+  min-width: 44px;
+  text-align: center;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+}
+
+/* 彻底放开视口裁剪限制 */
 .modal-interactive-svg-viewport {
-  width: 95%;
-  height: 95%;
-  overflow: visible !important; /* 彻底放开裁剪，确保哪怕是第7、8个字也能完美在中央对齐放大 */
+  overflow: visible !important;
 }
 
 /* 弹窗内非活动笔画半透明淡出 */
