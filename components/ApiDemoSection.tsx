@@ -23,11 +23,12 @@ export function ApiDemoSection() {
   const [pathTokens, setPathTokens] = useState<string[]>([]);
   const [controlPoints, setControlPoints] = useState<{ x: number; y: number; xIdx: number; yIdx: number }[]>([]);
   const [draggedPointIdx, setDraggedPointIdx] = useState<number | null>(null);
+  const [hoveredPointIdx, setHoveredPointIdx] = useState<number | null>(null); // 新增：纯悬停高亮索引
   const [modalSvgViewBox, setModalSvgViewBox] = useState<string>("0 0 1024 1200");
   
   const modalSvgRef = useRef<SVGSVGElement>(null);
 
-  // 快捷键智能预设
+  // 智能笔画预设
   const applyPreset = (type: 'all' | 'all-but-last' | 'only-first') => {
     const len = prompt.trim().length || 1;
     if (type === 'all') {
@@ -65,7 +66,7 @@ export function ApiDemoSection() {
     setIsAnimating(true);
   };
 
-  // 拦截主画布中点击的具体笔画
+  // 拦截主画布中点击的具体笔画并进入微调
   const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const targetPath = e.target as SVGPathElement;
     if (targetPath && targetPath.tagName === 'path' && targetPath.classList.contains('interactive-stroke')) {
@@ -80,11 +81,11 @@ export function ApiDemoSection() {
       setModalSvgViewBox(viewBox);
       setActiveEditPathId(pathId);
       
-      // 精准解构分词（数字与非数字指令交替数组）
+      // 精准解构分词
       const tokens = dAttr.split(/(-?\d+(?:\.\d+)?)/);
       const points: typeof controlPoints = [];
-      
       const numIndices: number[] = [];
+      
       tokens.forEach((t, idx) => {
         if (idx % 2 === 1) numIndices.push(idx);
       });
@@ -93,12 +94,7 @@ export function ApiDemoSection() {
         const xIdx = numIndices[i];
         const yIdx = numIndices[i + 1];
         if (yIdx !== undefined) {
-          points.push({
-            x: parseFloat(tokens[xIdx]),
-            y: parseFloat(tokens[yIdx]),
-            xIdx,
-            yIdx
-          });
+          points.push({ x: parseFloat(tokens[xIdx]), y: parseFloat(tokens[yIdx]), xIdx, yIdx });
         }
       }
       setPathTokens(tokens);
@@ -106,56 +102,58 @@ export function ApiDemoSection() {
     }
   };
 
-  // 【核心修复升级】将鼠标拖拽逻辑升格，由最外层全屏遮罩层驱动，彻底拒绝越界中断
+  // 【核心修复：全球矩阵投影算法】解决多字 transform 造成的笔画飞走错位 Bug
   const handleGlobalMouseMove = (e: React.MouseEvent) => {
     if (draggedPointIdx === null || !modalSvgRef.current || !svgContent || !activeEditPathId) return;
 
-    const svg = modalSvgRef.current;
-    const rect = svg.getBoundingClientRect();
+    const svgEl = modalSvgRef.current;
+    // 准确定位弹窗内部渲染的那根活动 Path 节点
+    const targetPathInModal = svgEl.querySelector(`[id="${activeEditPathId}"]`);
+    if (!targetPathInModal) return;
+
+    // 1. 创建 SVG 标定点
+    const svgPoint = svgEl.createSVGPoint();
+    svgPoint.x = e.clientX;
+    svgPoint.y = e.clientY;
+
+    // 2. 获取该笔画所依附的父级元素（即带有 translate 偏移的字符组 <g>）的屏幕坐标变换矩阵 (CTM)
+    const parentElement = targetPathInModal.parentElement || svgEl;
+    const ctm = parentElement.getScreenCTM();
+    if (!ctm) return;
+
+    // 3. 执行矩阵逆变换：将屏幕绝对像素无损转换回当前汉字的【局部相对坐标系空间】
+    const localPoint = svgPoint.matrixTransform(ctm.inverse());
     
-    // 解析视口矩阵
-    const vb = modalSvgViewBox.split(/\s+/).map(Number);
-    const vbX = vb[0] || 0;
-    const vbY = vb[1] || 0;
-    const vbW = vb[2] || 1024;
-    const vbH = vb[3] || 1200;
+    const svgX = Math.round(localPoint.x);
+    const svgY = Math.round(localPoint.y);
 
-    // 高精度屏幕物理像素映射至大模型数学坐标空间
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    
-    // 防溢出边界截断逻辑
-    const boundedMouseX = Math.max(0, Math.min(mouseX, rect.width));
-    const boundedMouseY = Math.max(0, Math.min(mouseY, rect.height));
+    // 4. 函数式实时形变响应与重构序列化，彻底杜绝数据丢失
+    setControlPoints((prevPoints) => {
+      const nextPoints = [...prevPoints];
+      nextPoints[draggedPointIdx] = { ...nextPoints[draggedPointIdx], x: svgX, y: svgY };
 
-    const svgX = vbX + (boundedMouseX / rect.width) * vbW;
-    const svgY = vbY + (boundedMouseY / rect.height) * vbH;
+      const newTokens = [...pathTokens];
+      nextPoints.forEach((p) => {
+        newTokens[p.xIdx] = p.x.toString();
+        newTokens[p.yIdx] = p.y.toString();
+      });
+      const newD = newTokens.join('');
 
-    // 实时形变更新
-    const updatedPoints = [...controlPoints];
-    updatedPoints[draggedPointIdx] = {
-      ...updatedPoints[draggedPointIdx],
-      x: Math.round(svgX),
-      y: Math.round(svgY)
-    };
-    setControlPoints(updatedPoints);
+      // 同步更新顶层核心数据源
+      setSvgContent((prevSvg) => {
+        if (!prevSvg) return null;
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(prevSvg, 'image/xml+xml');
+        const path = doc.getElementById(activeEditPathId);
+        if (path) {
+          path.setAttribute('d', newD);
+          return new XMLSerializer().serializeToString(doc);
+        }
+        return prevSvg;
+      });
 
-    // 实时序列化重构
-    const newTokens = [...pathTokens];
-    updatedPoints.forEach((p) => {
-      newTokens[p.xIdx] = p.x.toString();
-      newTokens[p.yIdx] = p.y.toString();
+      return nextPoints;
     });
-    const newD = newTokens.join('');
-
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(svgContent, 'image/xml+xml');
-    const targetPath = doc.getElementById(activeEditPathId);
-    if (targetPath) {
-      targetPath.setAttribute('d', newD);
-      const serialized = new XMLSerializer().serializeToString(doc);
-      setSvgContent(serialized);
-    }
   };
 
   const handleGenerate = async () => {
@@ -168,16 +166,13 @@ export function ApiDemoSection() {
     setIsAnimating(false);
     setActiveEditPathId(null);
 
-    const cleanPrompt = prompt.trim();
-    const cleanGiven = given.trim();
-
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: cleanPrompt,
-          ...(cleanGiven !== '' ? { given: cleanGiven } : {}),
+          prompt: prompt.trim(),
+          ...(given.trim() !== '' ? { given: given.trim() } : {}),
           temperature,
           top_p: topP
         }),
@@ -208,9 +203,7 @@ export function ApiDemoSection() {
           path.classList.add('interactive-stroke');
         });
 
-        const augmentedSvg = new XMLSerializer().serializeToString(doc);
-        
-        setSvgContent(augmentedSvg);
+        setSvgContent(new XMLSerializer().serializeToString(doc));
         setMeta({ genTime: data.gen_time, genTokens: data.gen_tokens });
         setTotalGenerated(genCount);
         setAnimatedStep(0);
@@ -258,144 +251,67 @@ export function ApiDemoSection() {
           <div className="control-group">
             <label htmlFor="api-prompt">输入汉字 (prompt)</label>
             <input
-              id="api-prompt"
-              type="text"
-              value={prompt}
+              id="api-prompt" type="text" value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="请输入汉字，如：不"
-              className="custom-input font-bold"
+              placeholder="请输入汉字" className="custom-input font-bold"
             />
           </div>
 
           <div className="control-group">
             <label>智能笔画预设 · Smart Presets</label>
             <div className="given-toggle-row">
-              <button type="button" onClick={() => applyPreset('all')} className="given-toggle-btn">
-                🏛️ 全字给全 (默认)
-              </button>
-              <button type="button" onClick={() => applyPreset('all-but-last')} className="given-toggle-btn">
-                🎯 末字预测 (留1笔)
-              </button>
-              <button type="button" onClick={() => applyPreset('only-first')} className="given-toggle-btn">
-                ✨ 全留首笔 (盲盒)
-              </button>
+              <button type="button" onClick={() => applyPreset('all')} className="given-toggle-btn">🏛️ 全字给全</button>
+              <button type="button" onClick={() => applyPreset('all-but-last')} className="given-toggle-btn">🎯 末字预测</button>
+              <button type="button" onClick={() => applyPreset('only-first')} className="given-toggle-btn">✨ 全留首笔</button>
             </div>
-            
             <label htmlFor="api-given" style={{ marginTop: '12px' }}>已知笔画值 (given)</label>
             <input
-              id="api-given"
-              type="text"
-              value={given}
-              onChange={(e) => setGiven(e.target.value)}
-              placeholder="留空则不传此参数"
-              className="custom-input font-mono"
+              id="api-given" type="text" value={given}
+              onChange={(e) => setGiven(e.target.value)} className="custom-input font-mono"
             />
           </div>
 
           <div className="api-params-box">
             <h4>高级采样参数</h4>
             <div className="control-group">
-              <div className="param-label-row">
-                <span>采样温度 (Temperature):</span>
-                <strong>{temperature}</strong>
-              </div>
-              <input
-                type="range" min="0.1" max="2.0" step="0.1"
-                value={temperature}
-                onChange={(e) => setTemperature(parseFloat(e.target.value))}
-              />
+              <div className="param-label-row"><span>采样温度:</span><strong>{temperature}</strong></div>
+              <input type="range" min="0.1" max="2.0" step="0.1" value={temperature} onChange={(e) => setTemperature(parseFloat(e.target.value))}/>
             </div>
             <div className="control-group">
-              <div className="param-label-row">
-                <span>Nucleus 采样 (Top_p):</span>
-                <strong>{topP}</strong>
-              </div>
-              <input
-                type="range" min="0.0" max="1.0" step="0.05"
-                value={topP}
-                onChange={(e) => setTopP(parseFloat(e.target.value))}
-              />
+              <div className="param-label-row"><span>Top_p:</span><strong>{topP}</strong></div>
+              <input type="range" min="0.0" max="1.0" step="0.05" value={topP} onChange={(e) => setTopP(parseFloat(e.target.value))}/>
             </div>
           </div>
 
           <button className="generate-btn" onClick={handleGenerate} disabled={loading || !prompt.trim()}>
-            {loading ? (
-              <span className="generate-btn-loading">
-                <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2, borderTopColor: '#fff' }} />
-                模型推理中...
-              </span>
-            ) : (
-              '开始生成笔画'
-            )}
+            {loading ? '模型推理中...' : '开始生成笔画'}
           </button>
 
-          {errorMsg && (
-            <div className="api-error-box">
-              <div className="error-title">⚠️ 出错了：</div>
-              {errorMsg}
-            </div>
-          )}
+          {errorMsg && <div className="api-error-box">{errorMsg}</div>}
         </div>
 
-        {/* 右侧画布区域 */}
+        {/* 右侧主画布 */}
         <div className="api-demo-canvas">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3>SVG 渲染画布 · Canvas</h3>
             {svgContent && !loading && (
-              <button 
-                type="button" 
-                onClick={handleReplay} 
-                disabled={isAnimating}
-                className="given-toggle-btn"
-                style={{ padding: '4px 10px', borderColor: '#764ba2', color: '#764ba2' }}
-              >
-                {isAnimating ? `🎬 正在播放 (${animatedStep}/${totalGenerated})` : '🔄 重新播放生成过程'}
+              <button type="button" onClick={handleReplay} disabled={isAnimating} className="given-toggle-btn" style={{ color: '#764ba2' }}>
+                {isAnimating ? `🎬 正在播放 (${animatedStep}/${totalGenerated})` : '🔄 重新播放'}
               </button>
             )}
           </div>
 
-          <div className="canvas-container" onClick={handleCanvasClick} title="提示：点击任意笔画可进行微调控制点">
+          <div className="canvas-container" onClick={handleCanvasClick}>
             <div className="mi-zi-ge">
-              <div className="mi-zi-ge-h" />
-              <div className="mi-zi-ge-v" />
-              <div className="mi-zi-ge-d1" />
-              <div className="mi-zi-ge-d2" />
+              <div className="mi-zi-ge-h" /><div className="mi-zi-ge-v" />
             </div>
-
-            {svgContent ? (
-              <div
-                className="raw-svg-container"
-                dangerouslySetInnerHTML={{ __html: svgContent }}
-              />
-            ) : loading ? (
-              <div className="loading-state">
-                <div className="spinner" />
-                <span>正在调用大模型预测矢量数据...</span>
-              </div>
-            ) : (
-              <div className="empty-state">
-                暂无生成内容，请在左侧配置参数并点击生成
-              </div>
-            )}
-          </div>
-
-          <div className="canvas-legend">
-            <div style={{ display: 'flex', gap: 16 }}>
-              <span className="legend-item"><span className="legend-dot black" /> ⬛ 黑色：用户给定</span>
-              <span className="legend-item"><span className="legend-dot blue" /> 🟦 蓝色：模型生成</span>
-            </div>
-            {meta && (
-              <div className="legend-meta">
-                <span>⏱️ {meta.genTime}s</span>
-                <span>🪙 {meta.genTokens} tokens</span>
-              </div>
-            )}
+            {svgContent ? <div className="raw-svg-container" dangerouslySetInnerHTML={{ __html: svgContent }} /> : <div className="empty-state">暂无生成内容</div>}
           </div>
         </div>
       </div>
 
       {/* ==========================================================================
-         ✨ 矢量笔画微调弹窗（全球追踪完美修复版）
+         ✨ 矢量笔画微调弹窗（全球追踪 + 局部逆矩阵对齐完美版）
          ========================================================================== */}
       {activeEditPathId && svgContent && (
         <div 
@@ -408,22 +324,22 @@ export function ApiDemoSection() {
             <div className="modal-header">
               <div>
                 <h4>✍️ 矢量笔画控制点微调面板</h4>
-                <p>当前选中笔画节点数：<strong>{controlPoints.length} 个</strong>。按住控制圆点可任意修正模型生成瑕疵。</p>
+                <p>当前选中笔画节点数：<strong>{controlPoints.length} 个</strong>。按住并拖拽高亮圆点可实时修正字形瑕疵。</p>
               </div>
-              <button className="modal-close-btn" onClick={() => setActiveEditPathId(null)}>✕ 关闭并保存</button>
+              <button className="modal-close-btn" onClick={() => setActiveEditPathId(null)}>✕ 关闭并应用修改</button>
             </div>
 
             <div className="modal-body-grid">
-              {/* 左侧：支持 Flex 滚动自适应的坐标面板 */}
+              {/* 左侧：双向高亮数据列表（已修复乱跳 Bug） */}
               <div className="modal-coords-list">
-                <h5>节点绝对坐标表 (SVG Space)</h5>
+                <h5>节点绝对坐标监视表 (SVG Space)</h5>
                 <div className="coords-scroll-box">
                   {controlPoints.map((pt, i) => (
                     <div 
                       key={i} 
-                      className={`coord-row-badge ${draggedPointIdx === i ? 'active' : ''}`}
-                      onMouseEnter={() => setDraggedPointIdx(i)}
-                      onMouseLeave={() => setDraggedPointIdx(null)}
+                      className={`coord-row-badge ${draggedPointIdx === i || hoveredPointIdx === i ? 'active' : ''}`}
+                      onMouseEnter={() => setHoveredPointIdx(i)} // 悬停仅作两边缘亮指示
+                      onMouseLeave={() => setHoveredPointIdx(null)}
                     >
                       <span className="node-idx">Node {i+1}</span>
                       <span className="node-val">X: <strong>{pt.x}</strong></span>
@@ -433,43 +349,40 @@ export function ApiDemoSection() {
                 </div>
               </div>
 
-              {/* 右侧：纵向高弹性伸缩、长文本自适应防裁剪视口 */}
+              {/* 右侧：纵向高弹性伸缩、长文本自适应不裁剪视口 */}
               <div className="modal-canvas-column">
                 <div className="modal-canvas-frame">
-                  <div className="mi-zi-ge opacity-30"><div className="mi-zi-ge-h"/><div className="mi-zi-ge-v"/></div>
+                  <div className="mi-zi-ge opacity-20"><div className="mi-zi-ge-h"/><div className="mi-zi-ge-v"/></div>
 
                   <svg 
                     ref={modalSvgRef}
                     viewBox={modalSvgViewBox}
                     className="modal-interactive-svg-viewport"
                   >
-                    {/* 底层：汉字骨架参考系 */}
+                    {/* 底层：原封不动渲染整组汉字作为绝对参考骨架 */}
                     <g dangerouslySetInnerHTML={{ __html: svgContent.match(/<svg[^>]*>([\s\S]*?)<\/svg>/)?.[1] || '' }} />
 
-                    {/* 顶层：活动骨骼及控制点句柄 */}
+                    {/* 顶层：直接覆盖绘制活动骨骼及控制点句柄 */}
                     <g>
                       <polyline
                         points={controlPoints.map(p => `${p.x},${p.y}`).join(' ')}
-                        fill="none"
-                        stroke="#ff007f"
-                        strokeWidth="2"
-                        strokeDasharray="4,4"
-                        style={{ opacity: 0.65 }}
+                        fill="none" stroke="#ff007f" strokeWidth="2" strokeDasharray="4,4" style={{ opacity: 0.65 }}
                       />
                       {controlPoints.map((pt, idx) => (
                         <circle
                           key={idx}
                           cx={pt.x}
                           cy={pt.y}
-                          r={draggedPointIdx === idx ? "14" : "8"}
-                          fill={draggedPointIdx === idx ? "#ff007f" : "#ffffff"}
+                          // 如果正在被拖动或在左侧列表处于悬停状态，圆点会动态放大，交互感拉满
+                          r={draggedPointIdx === idx ? "15" : hoveredPointIdx === idx ? "12" : "7"}
+                          fill={draggedPointIdx === idx ? "#ff007f" : hoveredPointIdx === idx ? "#764ba2" : "#ffffff"}
                           stroke={draggedPointIdx === idx ? "#ffffff" : "#764ba2"}
-                          strokeWidth={draggedPointIdx === idx ? "3" : "2"}
-                          style={{ cursor: 'move' }}
+                          strokeWidth="2"
+                          style={{ cursor: 'move', transition: 'r 0.1s, fill 0.1s' }}
                           onMouseDown={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            setDraggedPointIdx(idx);
+                            setDraggedPointIdx(idx); // 只有在这里按下鼠标，才是真正的拖拽开始
                           }}
                         />
                       ))}
@@ -482,7 +395,6 @@ export function ApiDemoSection() {
           </div>
         </div>
       )}
-
     </section>
   );
 }
