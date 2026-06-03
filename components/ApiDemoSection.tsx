@@ -13,16 +13,25 @@ export function ApiDemoSection() {
   const [meta, setMeta] = useState<{ genTime: number; genTokens: number } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // --- 新增：动态全流式书写过程控制状态 ---
+  // --- 过程展示状态 ---
   const [animatedStep, setAnimatedStep] = useState(0);
   const [totalGenerated, setTotalGenerated] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
 
-  // 快捷键智能逻辑：根据当前 prompt 汉字长度动态拼接 given 格式
+  // --- 新增：智能控制点交互微调核心状态 ---
+  const [activeEditPathId, setActiveEditPathId] = useState<string | null>(null);
+  const [pathTokens, setPathTokens] = useState<string[]>([]);
+  const [controlPoints, setControlPoints] = useState<{ x: number; y: number; xIdx: number; yIdx: number }[]>([]);
+  const [draggedPointIdx, setDraggedPointIdx] = useState<number | null>(null);
+  const [modalSvgViewBox, setModalSvgViewBox] = useState<string>("0 0 1024 1200");
+
+  const modalSvgRef = useRef<SVGSVGElement>(null);
+
+  // 快捷键智能逻辑
   const applyPreset = (type: 'all' | 'all-but-last' | 'only-first') => {
     const len = prompt.trim().length || 1;
     if (type === 'all') {
-      setGiven(''); 
+      setGiven('');
     } else if (type === 'all-but-last') {
       if (len <= 1) {
         setGiven('1');
@@ -36,28 +45,115 @@ export function ApiDemoSection() {
     }
   };
 
-  // 核心动效：驱动笔画按时间步长依次显现
+  // 驱动笔画按时间步长依次显现
   useEffect(() => {
     if (!isAnimating || totalGenerated === 0) return;
-    
     if (animatedStep >= totalGenerated) {
       setIsAnimating(false);
       return;
     }
-
-    const intervalTime = Math.max(150, 400 - totalGenerated * 10); // 根据笔画多少动态调整书写速度
+    const intervalTime = Math.max(150, 400 - totalGenerated * 10);
     const timer = setTimeout(() => {
       setAnimatedStep((prev) => prev + 1);
     }, intervalTime);
-
     return () => clearTimeout(timer);
   }, [isAnimating, animatedStep, totalGenerated]);
 
-  // 手动触发重新播放动画
   const handleReplay = () => {
     if (!svgContent) return;
     setAnimatedStep(0);
     setIsAnimating(true);
+  };
+
+  // 【核心新增】利用事件委托拦截画布中点击的具体笔画
+  const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const targetPath = e.target as SVGPathElement;
+    if (targetPath && targetPath.tagName === 'path' && targetPath.classList.contains('interactive-stroke')) {
+      // 停止动画，防止冲突
+      setIsAnimating(false);
+      setAnimatedStep(totalGenerated);
+
+      const pathId = targetPath.getAttribute('id');
+      const dAttr = targetPath.getAttribute('d') || '';
+      const svgEl = targetPath.closest('svg');
+      const viewBox = svgEl?.getAttribute('viewBox') || "0 0 1024 1200";
+
+      setModalSvgViewBox(viewBox);
+      setActiveEditPathId(pathId);
+
+      // 执行精准解构分词
+      // 正则将数字捕获出来，形成：[ "M ", "120", " ", "450", " C ", "130", ... ] 的交替数组
+      const tokens = dAttr.split(/(-?\d+(?:\.\d+)?)/);
+      const points: typeof controlPoints = [];
+
+      const numIndices: number[] = [];
+      tokens.forEach((t, idx) => {
+        if (idx % 2 === 1) numIndices.push(idx);
+      });
+
+      for (let i = 0; i < numIndices.length; i += 2) {
+        const xIdx = numIndices[i];
+        const yIdx = numIndices[i + 1];
+        if (yIdx !== undefined) {
+          points.push({
+            x: parseFloat(tokens[xIdx]),
+            y: parseFloat(tokens[yIdx]),
+            xIdx,
+            yIdx
+          });
+        }
+      }
+      setPathTokens(tokens);
+      setControlPoints(points);
+    }
+  };
+
+  // 【核心新增】鼠标拖拽控制点实时重构序列化
+  const handleModalMouseMove = (e: React.MouseEvent) => {
+    if (draggedPointIdx === null || !modalSvgRef.current || !svgContent || !activeEditPathId) return;
+
+    const svg = modalSvgRef.current;
+    const rect = svg.getBoundingClientRect();
+
+    // 解析当前大画布对应的 ViewBox 视口宽高矩阵
+    const vb = modalSvgViewBox.split(/\s+/).map(Number);
+    const vbX = vb[0] || 0;
+    const vbY = vb[1] || 0;
+    const vbW = vb[2] || 1024;
+    const vbH = vb[3] || 1200;
+
+    // 完美映射：把屏幕像素（clientX/Y）高精度映射回大模型绝对坐标系空间
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const svgX = vbX + (mouseX / rect.width) * vbW;
+    const svgY = vbY + (mouseY / rect.height) * vbH;
+
+    // 实时更新控制点状态
+    const updatedPoints = [...controlPoints];
+    updatedPoints[draggedPointIdx] = {
+      ...updatedPoints[draggedPointIdx],
+      x: Math.round(svgX),
+      y: Math.round(svgY)
+    };
+    setControlPoints(updatedPoints);
+
+    // 实时将改动写回原 SVG 字符串，让背景同步发生形变微调
+    const newTokens = [...pathTokens];
+    updatedPoints.forEach((p) => {
+      newTokens[p.xIdx] = p.x.toString();
+      newTokens[p.yIdx] = p.y.toString();
+    });
+    const newD = newTokens.join('');
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgContent, 'image/xml+xml');
+    const targetPath = doc.getElementById(activeEditPathId);
+    if (targetPath) {
+      targetPath.setAttribute('d', newD);
+      const serialized = new XMLSerializer().serializeToString(doc);
+      setSvgContent(serialized);
+    }
   };
 
   const handleGenerate = async () => {
@@ -68,6 +164,7 @@ export function ApiDemoSection() {
     setAnimatedStep(0);
     setTotalGenerated(0);
     setIsAnimating(false);
+    setActiveEditPathId(null);
 
     const cleanPrompt = prompt.trim();
     const cleanGiven = given.trim();
@@ -87,19 +184,19 @@ export function ApiDemoSection() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // 【核心改进】解析注入：将静态 SVG 变成可动态编程和交互的独立笔画对象
         const parser = new DOMParser();
         const doc = parser.parseFromString(data.svg, 'image/svg+xml');
         const paths = doc.querySelectorAll('path');
-        
+
         let genCount = 0;
-        paths.forEach((path) => {
+        paths.forEach((path, idx) => {
           const fill = path.getAttribute('fill') || '';
           const stroke = path.getAttribute('stroke') || '';
-          // 智能判定当前 path 是否属于 AI 预测生成的蓝色笔画范围
-          const isBlue = fill.includes('blue') || fill.includes('#0000ff') || fill.includes('#2563eb') || 
-                         stroke.includes('blue') || stroke.includes('#0000ff') || stroke.includes('#2563eb');
-          
+          const isBlue = fill.includes('blue') || fill.includes('#0000ff') || fill.includes('#2563eb') ||
+            stroke.includes('blue') || stroke.includes('#0000ff') || stroke.includes('#2563eb');
+
+          // 给每一个 path 注入全网唯一确定 ID 方便精准定位和事件编辑
+          path.setAttribute('id', `lvgm-stroke-${Date.now()}-${idx}`);
           if (isBlue) {
             path.setAttribute('data-stroke-type', 'generated');
             path.setAttribute('data-gen-idx', genCount.toString());
@@ -107,20 +204,16 @@ export function ApiDemoSection() {
           } else {
             path.setAttribute('data-stroke-type', 'given');
           }
-          // 注入全局高亮交互类名
           path.classList.add('interactive-stroke');
         });
 
         const augmentedSvg = new XMLSerializer().serializeToString(doc);
-        
+
         setSvgContent(augmentedSvg);
         setMeta({ genTime: data.gen_time, genTokens: data.gen_tokens });
         setTotalGenerated(genCount);
-        
-        // 数据准备完毕，立刻开启书写过程动画演示
         setAnimatedStep(0);
         setIsAnimating(true);
-
       } else {
         setErrorMsg(data.detail || `请求失败，状态码: ${response.status}`);
       }
@@ -133,16 +226,14 @@ export function ApiDemoSection() {
 
   return (
     <section id="demo" className="content-section">
-      {/* 动态注入精细至笔画控制的局部 CSS 规则 */}
+      {/* 动画控制沙箱 CSS */}
       {svgContent && (
         <style>{`
-          /* 未点亮的生成笔画，无论如何高高挂起绝对隐形，且不响应鼠标悬停 */
           .raw-svg-container path[data-stroke-type="generated"] {
             opacity: 0;
             pointer-events: none; 
             transition: opacity 0.4s ease-in-out;
           }
-          /* 随着时间轴被点亮的笔画，恢复接收鼠标事件，并赋予完整不透明度 */
           ${Array.from({ length: animatedStep }).map((_, i) => `
             .raw-svg-container path[data-gen-idx="${i}"] {
               opacity: 1 !important;
@@ -158,7 +249,7 @@ export function ApiDemoSection() {
         <span className="section-title-en">Interactive Demo</span>
       </h2>
       <p className="section-desc">
-        输入汉字并指定已知笔画，调用后端大模型实时预测补全字形。黑色为给定初始笔画，蓝色为模型预测生成。
+        输入汉字并指定已知笔画，预测补全字形。<b>支持交互：生成后可直接在画布中点击任意笔画，进入控制点拖拽微调系统。</b>
       </p>
 
       <div className="api-demo-wrapper">
@@ -189,7 +280,7 @@ export function ApiDemoSection() {
                 ✨ 全留首笔 (盲盒)
               </button>
             </div>
-            
+
             <label htmlFor="api-given" style={{ marginTop: '12px' }}>已知笔画值 (given)</label>
             <input
               id="api-given"
@@ -199,9 +290,6 @@ export function ApiDemoSection() {
               placeholder="留空则不传此参数"
               className="custom-input font-mono"
             />
-            <small className="hint">
-              格式：数字代表提供前几笔，多字用逗号隔开（如：all,all,1）。留空则由后端智能分配全给。
-            </small>
           </div>
 
           <div className="api-params-box">
@@ -234,7 +322,7 @@ export function ApiDemoSection() {
             {loading ? (
               <span className="generate-btn-loading">
                 <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2, borderTopColor: '#fff' }} />
-                模型推理中 (预计 3~15 秒)...
+                模型推理中...
               </span>
             ) : (
               '开始生成笔画'
@@ -251,23 +339,23 @@ export function ApiDemoSection() {
 
         {/* 右侧画布区域 */}
         <div className="api-demo-canvas">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyBetween: 'space-between', alignItems: 'center' }}>
             <h3>SVG 渲染画布 · Canvas</h3>
             {svgContent && !loading && (
-              <button 
-                type="button" 
-                onClick={handleReplay} 
+              <button
+                type="button"
+                onClick={handleReplay}
                 disabled={isAnimating}
                 className="given-toggle-btn"
-                style={{ padding: '4px 10px', borderColor: '#764ba2', color: '#764ba2', opacity: isAnimating ? 0.5 : 1 }}
+                style={{ padding: '4px 10px', borderColor: '#764ba2', color: '#764ba2' }}
               >
                 {isAnimating ? `🎬 正在播放 (${animatedStep}/${totalGenerated})` : '🔄 重新播放生成过程'}
               </button>
             )}
           </div>
 
-          <div className="canvas-container">
-            {/* 精致红线米字格 */}
+          {/* 绑定 onClick 捕获笔画点击 */}
+          <div className="canvas-container" onClick={handleCanvasClick} title="提示：点击任意笔画可进行微调控制点">
             <div className="mi-zi-ge">
               <div className="mi-zi-ge-h" />
               <div className="mi-zi-ge-v" />
@@ -275,7 +363,6 @@ export function ApiDemoSection() {
               <div className="mi-zi-ge-d2" />
             </div>
 
-            {/* 核心内嵌容器 */}
             {svgContent ? (
               <div
                 className="raw-svg-container"
@@ -295,24 +382,117 @@ export function ApiDemoSection() {
 
           <div className="canvas-legend">
             <div style={{ display: 'flex', gap: 16 }}>
-              <span className="legend-item">
-                <span className="legend-dot black" /> ⬛ 黑色：用户给定笔画
-              </span>
-              <span className="legend-item">
-                <span className="legend-dot blue" /> 🟦 蓝色：模型生成预测
-              </span>
+              <span className="legend-item"><span className="legend-dot black" /> ⬛ 黑色：用户给定</span>
+              <span className="legend-item"><span className="legend-dot blue" /> 🟦 蓝色：模型生成</span>
             </div>
-
             {meta && (
               <div className="legend-meta">
                 <span>⏱️ {meta.genTime}s</span>
                 <span>🪙 {meta.genTokens} tokens</span>
-                {totalGenerated > 0 && <span style={{ color: '#764ba2', fontWeight: 'bold' }}>✍️ 补全 {totalGenerated} 笔</span>}
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* ==========================================================================
+         ✨ 全新高阶能力：人机协同智能笔画控制点微调弹窗 (Control Points Modal)
+         ========================================================================== */}
+      {activeEditPathId && svgContent && (
+        <div className="stroke-edit-modal-backdrop">
+          <div className="stroke-edit-modal-card">
+
+            {/* Modal Header */}
+            <div className="modal-header">
+              <div>
+                <h4>✍️ 矢量笔画控制点微调面板</h4>
+                <p>当前选中笔画节点数：<strong>{controlPoints.length} 个</strong>。长按并拖拽高亮节点可任意纠正大模型生成瑕疵。</p>
+              </div>
+              <button className="modal-close-btn" onClick={() => setActiveEditPathId(null)}>✕ 关闭并应用</button>
+            </div>
+
+            {/* Modal Content Main Body */}
+            <div className="modal-body-grid">
+
+              {/* 左侧：节点精确坐标监视器 */}
+              <div className="modal-coords-list">
+                <h5>节点绝对坐标表 (SVG Space)</h5>
+                <div className="coords-scroll-box">
+                  {controlPoints.map((pt, i) => (
+                    <div
+                      key={i}
+                      className={`coord-row-badge ${draggedPointIdx === i ? 'active' : ''}`}
+                      onMouseEnter={() => setDraggedPointIdx(i)}
+                      onMouseLeave={() => setDraggedPointIdx(null)}
+                    >
+                      <span className="node-idx">Node {i + 1}</span>
+                      <span className="node-val">X: <strong>{pt.x}</strong></span>
+                      <span className="node-val">Y: <strong>{pt.y}</strong></span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-xs leading-relaxed">
+                  💡 <b>学术价值提示</b>：此处手动修正数据可用于生成强化学习人类反馈 (RLHF) 修正数据集，用来进一步对字形模型进行对齐微调。
+                </div>
+              </div>
+
+              {/* 右侧：放大聚焦的高清交互矢量画布 */}
+              <div className="modal-canvas-column">
+                <div
+                  className="modal-canvas-frame"
+                  onMouseMove={handleModalMouseMove}
+                  onMouseUp={() => setDraggedPointIdx(null)}
+                  onMouseLeave={() => setDraggedPointIdx(null)}
+                >
+                  {/* 精细米字背景线 */}
+                  <div className="mi-zi-ge opacity-40"><div className="mi-zi-ge-h" /><div className="mi-zi-ge-v" /></div>
+
+                  {/* 核心双层 SVG 叠加层 */}
+                  <svg
+                    ref={modalSvgRef}
+                    viewBox={modalSvgViewBox}
+                    className="modal-interactive-svg-viewport"
+                  >
+                    {/* 底层：原封不动渲染整组汉字结构（利用 CSS 规则将非活动笔画全部变淡） */}
+                    <g dangerouslySetInnerHTML={{ __html: svgContent.match(/<svg[^>]*>([\s\S]*?)<\/svg>/)?.[1] || '' }} />
+
+                    {/* 顶层：覆盖绘制当前正在被微调的骨骼多边形和可拖动控制圆形点 */}
+                    <g className="骨骼追踪器">
+                      {/* 绘制骨骼折线图，辅助看清曲率变化 */}
+                      <polyline
+                        points={controlPoints.map(p => `${p.x},${p.y}`).join(' ')}
+                        fill="none"
+                        stroke="#ff007f"
+                        strokeWidth="2"
+                        strokeDasharray="4,4"
+                        className="opacity-70"
+                      />
+                      {controlPoints.map((pt, idx) => (
+                        <circle
+                          key={idx}
+                          cx={pt.x}
+                          cy={pt.y}
+                          r={draggedPointIdx === idx ? "12" : "7"}
+                          fill={draggedPointIdx === idx ? "#ff007f" : "#ffffff"}
+                          stroke={draggedPointIdx === idx ? "#ffffff" : "#764ba2"}
+                          strokeWidth={draggedPointIdx === idx ? "3" : "2"}
+                          style={{ cursor: 'move', transition: 'r 0.1s, fill 0.1s' }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            setDraggedPointIdx(idx);
+                          }}
+                        />
+                      ))}
+                    </g>
+                  </svg>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
     </section>
   );
 }
